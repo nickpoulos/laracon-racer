@@ -58,26 +58,26 @@ const DRIVERS = [
 
 // Powerup data
 const POWERUPS = [
-    { 
-        type: 'laravel', 
-        src: '/img/powerup-laravel.png', 
-        width: 50, 
+    {
+        type: 'laravel',
+        src: '/img/powerup-laravel.png',
+        width: 50,
         height: 50,
         vehicleBonus: 'Laravel Lambo',
         driverBonus: 'TAYLOR OTWELL'
     },
-    { 
-        type: 'vue', 
-        src: '/img/powerup-vue.png', 
-        width: 50, 
+    {
+        type: 'vue',
+        src: '/img/powerup-vue.png',
+        width: 50,
         height: 50,
         vehicleBonus: 'TypeScript Truck',
         driverBonus: 'EVAN YOU'
     },
-    { 
-        type: 'tailwind', 
-        src: '/img/powerup-tailwind.png', 
-        width: 50, 
+    {
+        type: 'tailwind',
+        src: '/img/powerup-tailwind.png',
+        width: 50,
         height: 50,
         vehicleBonus: 'CSS Cycle',
         driverBonus: 'ADAM WATHAN'
@@ -87,9 +87,23 @@ const POWERUPS = [
 // Obstacle car sprites - scaled down from original high-res dimensions
 const OBSTACLE_CARS = [
     { src: '/img/car1.png', width: 55, height: 48 }, // Scaled from 1375x1189
-    { src: '/img/car2.png', width: 60, height: 41 }, // Scaled from 1709x1169  
+    { src: '/img/car2.png', width: 60, height: 41 }, // Scaled from 1709x1169
     { src: '/img/car3.png', width: 50, height: 34 }  // Scaled from 1202x806
 ];
+
+// Audio assets
+const AUDIO_ASSETS = {
+    engine: '/audio/engine.wav',      // Engine sound with pitch based on speed
+    gameover: '/audio/gameover.wav',  // Game over when out of lives
+    honk: '/audio/honk.wav',         // Collision honk variant 1
+    honk2: '/audio/honk2.wav',       // Collision honk variant 2
+    invincible: '/audio/invincible.wav', // Invincibility powerup
+    menu1: '/audio/menu1.wav',       // Menu navigation sound 1
+    menu2: '/audio/menu2.wav',       // Menu navigation sound 2
+    powerup: '/audio/powerup.wav',   // Standard powerup (no invincibility)
+    win: '/audio/win.wav',           // Race completion win sound
+    countdown: '/audio/countdown.wav' // Countdown sound at race start
+};
 
 // Helper functions
 Number.prototype.pad = function (numZeros, char = 0) {
@@ -206,6 +220,169 @@ class Powerup {
     }
 }
 
+// Audio class - Web Audio API implementation
+class GameAudio {
+    constructor() {
+        try {
+            this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+            // Volume control
+            this.masterGain = this.audioCtx.createGain();
+            this.masterGain.connect(this.audioCtx.destination);
+            this.masterGain.gain.value = 0.7; // Default volume
+
+            this.files = {};
+            this.isLoaded = false;
+            this.isMuted = false;
+
+        } catch (e) {
+            console.warn('Web Audio API not supported, audio disabled');
+            this.audioCtx = null;
+        }
+    }
+
+    get volume() {
+        return this.audioCtx ? this.masterGain.gain.value : 0;
+    }
+
+    set volume(level) {
+        if (this.audioCtx) {
+            this.masterGain.gain.value = level;
+        }
+    }
+
+    mute() {
+        this.isMuted = !this.isMuted;
+        this.volume = this.isMuted ? 0 : 0.7;
+    }
+
+    async loadAll() {
+        if (!this.audioCtx) return;
+
+        const loadPromises = Object.entries(AUDIO_ASSETS).map(([key, src]) =>
+            this.load(src, key)
+        );
+
+        try {
+            await Promise.all(loadPromises);
+            this.isLoaded = true;
+            console.log('All audio files loaded successfully');
+        } catch (error) {
+            console.warn('Some audio files failed to load:', error);
+        }
+    }
+
+    load(src, key) {
+        return new Promise((resolve, reject) => {
+            if (!this.audioCtx) {
+                resolve();
+                return;
+            }
+
+            const request = new XMLHttpRequest();
+            request.open('GET', src, true);
+            request.responseType = 'arraybuffer';
+
+            request.onload = () => {
+                this.audioCtx.decodeAudioData(
+                    request.response,
+                    (buffer) => {
+                        this.files[key] = buffer;
+                        resolve();
+                    },
+                    (error) => {
+                        console.warn(`Failed to decode audio: ${src}`, error);
+                        resolve(); // Don't reject, just continue without this audio
+                    }
+                );
+            };
+
+            request.onerror = () => {
+                console.warn(`Failed to load audio: ${src}`);
+                resolve(); // Don't reject, just continue without this audio
+            };
+
+            request.send();
+        });
+    }
+
+    play(key, options = {}) {
+        if (!this.audioCtx || !this.files[key] || this.isMuted) return null;
+
+        try {
+            const source = this.audioCtx.createBufferSource();
+            source.buffer = this.files[key];
+
+            // Create gain node for individual sound volume
+            const gainNode = this.audioCtx.createGain();
+            gainNode.gain.value = options.volume || 1.0;
+
+            source.connect(gainNode);
+            gainNode.connect(this.masterGain);
+
+            // Apply options
+            if (options.loop) source.loop = true;
+            if (options.pitch) source.detune.value = options.pitch;
+            if (options.playbackRate) source.playbackRate.value = options.playbackRate;
+
+            source.start(0);
+            return source;
+        } catch (error) {
+            console.warn(`Failed to play audio: ${key}`, error);
+            return null;
+        }
+    }
+
+    playEngine(speed) {
+        // Play engine sound with pitch based on speed
+        if (speed > 0) {
+            const pitch = speed * 8; // Adjust multiplier for desired effect
+            this.play('engine', { pitch, volume: 0.3 });
+        }
+    }
+
+    playCollision() {
+        // Randomly choose between honk variants
+        const honkVariant = Math.random() < 0.5 ? 'honk' : 'honk2';
+        this.play(honkVariant, { volume: 0.8 });
+    }
+
+    playPowerupStandard() {
+        // Standard powerup (no invincibility)
+        this.play('powerup', { volume: 0.6 });
+    }
+
+    playPowerupInvincible() {
+        // Invincibility-granting powerup
+        this.play('invincible', { volume: 0.7 });
+    }
+
+    playMenu1() {
+        // Menu navigation sound 1
+        this.play('menu1', { volume: 0.5 });
+    }
+
+    playMenu2() {
+        // Menu navigation sound 2 (opposite/alternative)
+        this.play('menu2', { volume: 0.5 });
+    }
+
+    playGameOver() {
+        // Game over when running out of lives
+        this.play('gameover', { volume: 0.8 });
+    }
+
+    playWin() {
+        // Race completion win sound
+        this.play('win', { volume: 0.8 });
+    }
+
+    playCountdown() {
+        // Countdown sound at race start
+        this.play('countdown', { volume: 0.7 });
+    }
+}
+
 // Main game class
 class FixedRacer {
     constructor() {
@@ -254,15 +431,22 @@ class FixedRacer {
         // Input
         this.keys = {};
 
+        // Audio system
+        this.audio = new GameAudio();
+
         this.init();
     }
 
-    init() {
+    async init() {
         this.setupDOM();
         this.setupInput();
         this.generateMap();
         this.createRoad();
         this.spawnCars();
+
+        // Load audio files
+        await this.audio.loadAll();
+
         this.showIntroScreen();
         this.startGameLoop();
     }
@@ -344,6 +528,12 @@ class FixedRacer {
     }
 
     handleKeyPress(keyCode) {
+        // Global audio control
+        if (keyCode === 'KeyM') {
+            this.audio.mute();
+            return;
+        }
+
         switch (this.gameState) {
             case GAME_STATES.INTRO:
                 if (keyCode === 'Space') {
@@ -389,17 +579,21 @@ class FixedRacer {
                 if (keyCode === 'ArrowLeft') {
                     this.currentVehicleIndex = (this.currentVehicleIndex - 1 + VEHICLES.length) % VEHICLES.length;
                     this.showVehicleSelect();
+                    this.audio.playMenu1(); // Navigation sound
                 } else if (keyCode === 'ArrowRight') {
                     this.currentVehicleIndex = (this.currentVehicleIndex + 1) % VEHICLES.length;
                     this.showVehicleSelect();
+                    this.audio.playMenu1(); // Navigation sound
                 } else if (keyCode === 'Space') {
                     this.selectedVehicle = VEHICLES[this.currentVehicleIndex];
                     this.gameState = GAME_STATES.DRIVER_SELECT;
                     this.showDriverSelect();
+                    this.audio.playMenu2(); // Selection sound
                 } else if (keyCode === 'Escape') {
                     // Go back to intro screen
                     this.gameState = GAME_STATES.INTRO;
                     this.showIntroScreen();
+                    this.audio.playMenu2(); // Back sound
                 }
                 break;
 
@@ -407,17 +601,21 @@ class FixedRacer {
                 if (keyCode === 'ArrowLeft') {
                     this.currentDriverIndex = (this.currentDriverIndex - 1 + DRIVERS.length) % DRIVERS.length;
                     this.showDriverSelect();
+                    this.audio.playMenu1(); // Navigation sound
                 } else if (keyCode === 'ArrowRight') {
                     this.currentDriverIndex = (this.currentDriverIndex + 1) % DRIVERS.length;
                     this.showDriverSelect();
+                    this.audio.playMenu1(); // Navigation sound
                 } else if (keyCode === 'Space') {
                     this.selectedDriver = DRIVERS[this.currentDriverIndex];
                     this.gameState = GAME_STATES.RACING;
                     this.startRace();
+                    // Race start sound will be handled in countdown
                 } else if (keyCode === 'Escape') {
                     // Go back to vehicle selection
                     this.gameState = GAME_STATES.VEHICLE_SELECT;
                     this.showVehicleSelect();
+                    this.audio.playMenu2(); // Back sound
                 }
                 break;
 
@@ -468,7 +666,7 @@ class FixedRacer {
                 <p id="validation-message" style="color: #ff0000; font-size: 10px; margin-top: 10px; display: none;">Please fill in both name and GitHub username</p>
             </div>
         `;
-        instructions.innerHTML = '<div style="font-size: 12px; text-align: center;"><span style="color: #ff6600; font-size: 28px; letter-spacing: -10px; margin-right: 10px; position: relative; top: 2px;">← →</span> Navigate/Steer • <span style="color: #ff6600;">↑ ↓</span> Accelerate/Brake • <span style="color: #ff6600;">SPACE</span> Select/Start • <span style="color: #ff6600;">ESC</span> Back</div>';
+        instructions.innerHTML = '<div style="font-size: 12px; text-align: center;"><span style="color: #ff6600; font-size: 28px; letter-spacing: -10px; margin-right: 10px; position: relative; top: 2px;">← →</span> Navigate/Steer • <span style="color: #ff6600;">↑ ↓</span> Accelerate/Brake • <span style="color: #ff6600;">SPACE</span> Select/Start • <span style="color: #ff6600;">ESC</span> Back • <span style="color: #ff6600;">M</span> Mute</div>';
 
         const style = document.createElement('style');
         style.textContent = '@keyframes blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }';
@@ -491,7 +689,7 @@ class FixedRacer {
                         <h3 style="font-size: 1.2em; color: ${index === this.currentVehicleIndex ? '#ff6600' : 'white'}; text-align: center;margin-bottom:20px;">${vehicle.name}</h3>
                         <p style="font-size: 0.9em; text-align: center;">Speed: ${vehicle.speed} MPH</p>
                         <p style="font-size: 0.9em; text-align: center;">Accel: ${vehicle.accel}</p>
-                    </div>
+                    </div> 
                 `).join('')}
             </div>
         `;
@@ -607,6 +805,9 @@ class FixedRacer {
         `;
         hud.appendChild(countdownElement);
 
+        // Play countdown sound when countdown starts
+        this.audio.playCountdown();
+
         // Countdown sequence
         for (let i = 3; i > 0; i--) {
             countdownElement.textContent = i;
@@ -705,22 +906,22 @@ class FixedRacer {
 
     spawnPowerup() {
         const now = Date.now();
-        
+
         // Only spawn if enough time has passed and random chance (much rarer than cars)
         if (now - this.lastPowerupSpawn > this.powerupSpawnCooldown && Math.random() < 0.02) {
             // Random powerup type
             const powerupType = POWERUPS[Math.floor(Math.random() * POWERUPS.length)];
-            
+
             // Random lane
             const lanes = Object.values(LANES);
             const randomLane = lanes[Math.floor(Math.random() * lanes.length)];
-            
+
             // Fixed position far ahead of player
             const powerupPos = 60 + Math.random() * 20; // Between positions 60-80
-            
+
             const powerup = new Powerup(powerupPos, powerupType, randomLane);
             this.powerups.push(powerup);
-            
+
             this.lastPowerupSpawn = now;
         }
     }
@@ -754,6 +955,13 @@ class FixedRacer {
 
         // Add score
         this.scoreVal += totalScore;
+
+        // Play sound effects
+        if (invincibilityGranted) {
+            this.audio.playPowerupInvincible();
+        } else {
+            this.audio.playPowerupStandard();
+        }
 
         // Show powerup collection feedback (you could add visual effects here)
         console.log(`Collected ${powerup.type.type} powerup! Score: +${totalScore}${invincibilityGranted ? ' + Invincibility!' : ''}`);
@@ -873,6 +1081,11 @@ class FixedRacer {
             document.getElementById('lap').textContent = `${cT.getMinutes()}'${cT.getSeconds().pad(2)}"${cT.getMilliseconds().pad(3)}`;
         }
 
+        // Engine sound based on speed
+        if (this.inGame && this.speed > 0) {
+            this.audio.playEngine(this.speed);
+        }
+
         // Update cloud background
         const cloud = document.getElementById('cloud');
         this.cloudOffset -= this.lines[startPos].curve * step * this.speed * 0.13;
@@ -906,6 +1119,7 @@ class FixedRacer {
                         // Update lives display immediately
                         document.getElementById('lives-value').textContent = this.lives;
 
+                        this.audio.playCollision(); // Collision sound
                         console.log('Car collision! Lives:', this.lives);
                         if (this.lives <= 0) {
                             this.gameOver();
@@ -938,24 +1152,24 @@ class FixedRacer {
             // Check powerup collisions
             for (let i = this.powerups.length - 1; i >= 0; i--) {
                 const powerup = this.powerups[i];
-                
+
                 // Remove powerups that are behind the player (using a more lenient check)
                 if (powerup.pos < (this.pos / SEGMENT_LENGTH) - 10) {
                     powerup.element.remove();
                     this.powerups.splice(i, 1);
                     continue;
                 }
-                
+
                 // Check collision with player
                 const offsetRatio = 5;
                 if ((powerup.pos | 0) === startPos &&
                     isCollide(this.playerX * offsetRatio + LANES.B, 0.5, powerup.lane, 0.5) &&
                     !powerup.collected) {
-                    
+
                     // Collect powerup
                     powerup.collected = true;
                     this.collectPowerup(powerup);
-                    
+
                     // Remove from game
                     powerup.element.remove();
                     this.powerups.splice(i, 1);
@@ -1079,6 +1293,13 @@ class FixedRacer {
         this.gameState = GAME_STATES.GAME_OVER;
 
         const scoreData = this.calculateFinalScore();
+
+        // Play appropriate sound based on how the game ended
+        if (this.raceCompleted) {
+            this.audio.playWin(); // Race completed successfully
+        } else {
+            this.audio.playGameOver(); // Ran out of lives
+        }
 
         // Submit score to leaderboard
         this.submitToLeaderboard(scoreData);
