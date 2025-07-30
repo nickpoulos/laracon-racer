@@ -2,7 +2,6 @@
 
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Response;
-use App\Http\Controllers\RaceController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -21,6 +20,3 @@ Route::get('/images/{filename}', function ($filename) {
     return response($file)->header('Content-Type', $mimeType);
 });
 
-// Temporary API routes in web (without CSRF protection)
-Route::post('/api/races', [RaceController::class, 'store'])->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
-Route::get('/api/races/leaderboard', [RaceController::class, 'leaderboard']);
