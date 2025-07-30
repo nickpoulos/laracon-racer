@@ -489,8 +489,7 @@ class FixedRacer {
                     <!-- Speed tacho in bottom right -->
                     <div id="tacho" style="position: absolute; text-align: right; width: 23%; bottom: 5%; z-index: 2000; color: #e62e13; text-shadow: -2px 0 black, 0 2px black, 2px 0 black, 0 -2px black; letter-spacing: 1px; font-size: 24px;">0</div>
                 </div>
-                <div id="menu" style="position: absolute; width: 100%; height: 100%; background: rgba(0,0,0,0.8); color: white; z-index: 3000; display: flex; flex-direction: column; justify-content: center; align-items: center; font-family: 'Press Start 2P', monospace; text-align: center;">
-                    <h1 id="menu-title" style="font-size: 2.5em; margin-bottom: 20px; color: #ff6600; text-align: center;">LARACON RACER</h1>
+                <div id="menu" style="position: absolute; width: 100%; height: 100%; color: white; z-index: 3000; display: flex; flex-direction: column; justify-content: center; align-items: center; font-family: 'Press Start 2P', monospace; text-align: center;">
                     <div id="menu-content"></div>
                     <div id="menu-instructions" style="margin-top: 30px; font-size: 10px; color: #ccc; text-align: center;"></div>
                 </div>
@@ -640,12 +639,17 @@ class FixedRacer {
         const instructions = document.getElementById('menu-instructions');
 
         menu.style.display = 'flex';
+        // Set title screen background
+        menu.style.backgroundImage = "url('/img/title.png')";
+        menu.style.backgroundSize = "cover";
+        menu.style.backgroundPosition = "center";
+        menu.style.backgroundRepeat = "no-repeat";
+        menu.style.backgroundColor = "rgba(0,0,0,0.3)";
+        menu.style.backgroundBlendMode = "multiply";
         content.innerHTML = `
-            <div style="text-align: center; max-width: 400px;">
-                <p style="font-size: 1.2em; margin-bottom: 30px; color: #ffffff;">Enter your details to compete on the leaderboard!</p>
-
+            <div style="text-align: center; max-width: 400px; margin-top: 200px;">
                 <div style="margin-bottom: 20px;">
-                    <label style="display: block; color: #ff6600; font-size: 12px; margin-bottom: 8px; text-align: left;">PLAYER NAME</label>
+                    <label style="display: block; color: #ffffff; font-size: 12px; margin-bottom: 8px; text-align: left;">PLAYER NAME</label>
                     <input id="player-name" type="text" maxlength="20" placeholder="Enter your name"
                            style="width: 100%; padding: 10px; font-family: 'Press Start 2P', monospace; font-size: 10px;
                                   background: #222; color: #ffffff; border: 2px solid #ff6600; border-radius: 5px;
@@ -653,8 +657,8 @@ class FixedRacer {
                            value="${this.playerName}">
                 </div>
 
-                <div style="margin-bottom: 30px;">
-                    <label style="display: block; color: #ff6600; font-size: 12px; margin-bottom: 8px; text-align: left;">GITHUB USERNAME</label>
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; color: #ffffff; font-size: 12px; margin-bottom: 8px; text-align: left;">GITHUB USERNAME</label>
                     <input id="github-username" type="text" maxlength="39" placeholder="Enter GitHub username (without @)"
                            style="width: 100%; padding: 10px; font-family: 'Press Start 2P', monospace; font-size: 10px;
                                   background: #222; color: #ffffff; border: 2px solid #ff6600; border-radius: 5px;
@@ -662,7 +666,9 @@ class FixedRacer {
                            value="${this.githubUsername}">
                 </div>
 
-                <p id="start-prompt" style="font-size: 1.8em; animation: blink 1s infinite; margin-top: 70px;">PRESS SPACE TO START</p>
+                <p style="font-size: 1.2em; margin-bottom: 40px; color: #ffffff;">Enter your details to compete on the leaderboard!</p>
+
+                <p id="start-prompt" style="font-size: 1.8em; animation: blink 1s infinite; margin-top: 20px;">PRESS SPACE TO START</p>
                 <p id="validation-message" style="color: #ff0000; font-size: 10px; margin-top: 10px; display: none;">Please fill in both name and GitHub username</p>
             </div>
         `;
@@ -679,7 +685,13 @@ class FixedRacer {
     }
 
     showVehicleSelect() {
+        const menu = document.getElementById('menu');
         const content = document.getElementById('menu-content');
+        
+        // Set blue background for vehicle selection
+        menu.style.backgroundImage = "none";
+        menu.style.backgroundColor = "rgba(0,0,0,0.8)";
+        menu.style.backgroundBlendMode = "normal";
         content.innerHTML = `
             <h2 style="margin-bottom: 30px; font-size: 1.5em; text-align: center;">SELECT YOUR VEHICLE</h2>
             <div style="display: flex; gap: 40px; justify-content: center;">
@@ -698,7 +710,13 @@ class FixedRacer {
     }
 
     showDriverSelect() {
+        const menu = document.getElementById('menu');
         const content = document.getElementById('menu-content');
+        
+        // Set blue background for driver selection
+        menu.style.backgroundImage = "none";
+        menu.style.backgroundColor = "rgba(0,0,0,0.8)";
+        menu.style.backgroundBlendMode = "normal";
         content.innerHTML = `
             <h2 style="margin-bottom: 30px; font-size: 1.5em; text-align: center;">SELECT YOUR DRIVER</h2>
             <div style="display: flex; gap: 40px; justify-content: center;">
