@@ -45,9 +45,9 @@ const GAME_STATES = {
 
 // Vehicle data
 const VEHICLES = [
-    { name: 'LAMBO', speed: 220, accel: 40, img: '/img/lambo.jpg', sprite: '/img/hero.png', width: 110, height: 56 },
-    { name: 'TRUCK', speed: 180, accel: 35, img: '/img/truck.jpg', sprite: '/img/hero-truck.png', width: 110, height: 56 },
-    { name: 'BIKE', speed: 260, accel: 45, img: '/img/motorcycle.jpg', sprite: '/img/hero-cycle.png', width: 49, height: 55 }
+    { name: 'Laravel Lambo', speed: 220, accel: 40, img: '/img/lambo.jpg', sprite: '/img/hero.png', width: 110, height: 56 },
+    { name: 'TypeScript Truck', speed: 180, accel: 35, img: '/img/truck.jpg', sprite: '/img/hero-truck.png', width: 110, height: 56 },
+    { name: 'CSS Cycle', speed: 260, accel: 45, img: '/img/motorcycle.jpg', sprite: '/img/hero-cycle.png', width: 49, height: 55 }
 ];
 
 const DRIVERS = [
@@ -417,7 +417,7 @@ class FixedRacer {
             <div style="display: flex; gap: 40px; justify-content: center;">
                 ${VEHICLES.map((vehicle, index) => `
                     <div style="text-align: center; border: ${index === this.currentVehicleIndex ? '4px solid #ff6600' : '2px solid #666'}; padding: 20px; border-radius: 10px; background: ${index === this.currentVehicleIndex ? 'rgba(255, 102, 0, 0.2)' : 'transparent'};">
-                        <div style="width: 120px; height: 80px; background: url('${vehicle.img}') center/cover; margin-bottom: 10px;"></div>
+                        <div style="width: 100%; height: 80px; background: url('${vehicle.img}') center/cover; margin: 0 auto 10px auto; border-radius: 5px;"></div>
                         <h3 style="font-size: 1.2em; color: ${index === this.currentVehicleIndex ? '#ff6600' : 'white'}; text-align: center;">${vehicle.name}</h3>
                         <p style="font-size: 0.9em; text-align: center;">Speed: ${vehicle.speed}</p>
                         <p style="font-size: 0.9em; text-align: center;">Accel: ${vehicle.accel}</p>
@@ -455,8 +455,8 @@ class FixedRacer {
         this.maxSpeed = this.selectedVehicle.speed;
         this.vehicleAccel = this.selectedVehicle.accel;
 
-        // Truck gets an extra life
-        if (this.selectedVehicle.name === 'TRUCK') {
+        // TypeScript Truck gets an extra life
+        if (this.selectedVehicle.name === 'TypeScript Truck') {
             this.lives = 4; // 3 base lives + 1 extra for truck
         } else {
             this.lives = 3; // Base lives for other vehicles
@@ -480,7 +480,7 @@ class FixedRacer {
         hero.style.height = `${this.selectedVehicle.height}px`;
 
         // Set background position based on vehicle type
-        if (this.selectedVehicle.name === 'BIKE') {
+        if (this.selectedVehicle.name === 'CSS Cycle') {
             hero.style.backgroundPosition = '-45px 0'; // Center position for bike (second frame)
         } else {
             hero.style.backgroundPosition = '-110px 0'; // Center position for cars
@@ -661,7 +661,7 @@ class FixedRacer {
 
         const hero = document.getElementById('hero');
         if (this.keys['ArrowRight']) {
-            if (this.selectedVehicle.name === 'BIKE') {
+            if (this.selectedVehicle.name === 'CSS Cycle') {
                 hero.style.backgroundPosition = `-90px 0`; // Right turn for bike (third frame)
             } else {
                 hero.style.backgroundPosition = '-220px 0'; // Right turn for cars
@@ -671,7 +671,7 @@ class FixedRacer {
             hero.style.backgroundPosition = '0 0'; // Left turn (same for all)
             this.playerX -= 0.007 * step * this.speed;
         } else {
-            if (this.selectedVehicle.name === 'BIKE') {
+            if (this.selectedVehicle.name === 'CSS Cycle') {
                 hero.style.backgroundPosition = '-45px 0'; // Center position for bike (second frame)
             } else {
                 hero.style.backgroundPosition = '-110px 0'; // Center position for cars

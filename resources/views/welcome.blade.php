@@ -133,9 +133,9 @@
                 font-weight: bold;
             }
 
-            .vehicle-lambo { background: #ff6600; color: #fff; }
-            .vehicle-truck { background: #4cff00; color: #000; }
-            .vehicle-bike { background: #0082df; color: #fff; }
+            .vehicle-laravel-lambo { background: #ff6600; color: #fff; }
+            .vehicle-typescript-truck { background: #4cff00; color: #000; }
+            .vehicle-css-cycle { background: #0082df; color: #fff; }
 
             .loading {
                 color: #ff6600;
@@ -153,16 +153,9 @@
     </head>
     <body>
         <div class="main-container">
-            <div id="controls">
-                <span><span>SPACE</span>start/restart</span>
-                <span><span>ESC</span>back</span>
-                <span><span style="font-size: 25px;">←→</span>steer</span>
-                <span><span>↑↓</span>accelerate/brake</span>
-            </div>
-
             <div id="game-container"></div>
 
-            <div id="leaderboard">
+            <div id="leaderboard" style="margin-top: 50px;">
                 <h2>🏆 Leaderboard</h2>
                 <div id="leaderboard-content">
                     <div class="loading">Loading leaderboard...</div>
@@ -180,23 +173,34 @@
                 async loadLeaderboard() {
                     const content = document.getElementById('leaderboard-content');
                     try {
+                        console.log('Loading leaderboard from:', '/api/races/leaderboard');
                         const response = await fetch('/api/races/leaderboard');
-                        const data = await response.json();
+                        console.log('Response status:', response.status);
                         
-                        if (data.success && data.data.length > 0) {
+                        if (!response.ok) {
+                            const errorText = await response.text();
+                            console.error('HTTP Error:', response.status, errorText);
+                            content.innerHTML = `<div class="error">Error loading leaderboard (${response.status})</div>`;
+                            return;
+                        }
+                        
+                        const data = await response.json();
+                        console.log('Leaderboard data:', data);
+
+                        if (data.success && data.data && data.data.length > 0) {
                             this.renderLeaderboard(data.data);
                         } else {
                             content.innerHTML = '<div style="color: #ff6600; text-align: center; padding: 20px;">No races completed yet. Be the first!</div>';
                         }
                     } catch (error) {
                         console.error('Error loading leaderboard:', error);
-                        content.innerHTML = '<div class="error">Error loading leaderboard</div>';
+                        content.innerHTML = '<div class="error">Error loading leaderboard: ' + error.message + '</div>';
                     }
                 }
 
                 renderLeaderboard(races) {
                     const content = document.getElementById('leaderboard-content');
-                    
+
                     let html = `
                         <table class="leaderboard-table">
                             <thead>
@@ -215,7 +219,7 @@
                     races.forEach((race, index) => {
                         const rank = index + 1;
                         const rankClass = rank <= 3 ? `rank-${rank}` : 'rank';
-                        const vehicleClass = `vehicle-${race.vehicle.toLowerCase()}`;
+                        const vehicleClass = `vehicle-${race.vehicle.toLowerCase().replace(/\s+/g, '-')}`;
                         const timeFormatted = this.formatTime(race.race_time);
 
                         html += `
@@ -242,7 +246,7 @@
                     const ms = milliseconds % 1000;
                     const minutes = Math.floor(totalSeconds / 60);
                     const seconds = totalSeconds % 60;
-                    
+
                     return `${minutes}:${seconds.toString().padStart(2, '0')}.${ms.toString().padStart(3, '0')}`;
                 }
 
@@ -258,13 +262,19 @@
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                                'Accept': 'application/json'
                             },
                             body: JSON.stringify(raceData)
                         });
 
+                        if (!response.ok) {
+                            const errorText = await response.text();
+                            console.error('HTTP Error:', response.status, errorText);
+                            return false;
+                        }
+
                         const result = await response.json();
-                        
+
                         if (result.success) {
                             console.log('Race submitted successfully:', result);
                             // Reload leaderboard after successful submission

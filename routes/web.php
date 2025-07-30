@@ -21,6 +21,6 @@ Route::get('/images/{filename}', function ($filename) {
     return response($file)->header('Content-Type', $mimeType);
 });
 
-// Race API endpoints
-Route::post('/api/races', [RaceController::class, 'store']);
+// Temporary API routes in web (without CSRF protection)
+Route::post('/api/races', [RaceController::class, 'store'])->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
 Route::get('/api/races/leaderboard', [RaceController::class, 'leaderboard']);

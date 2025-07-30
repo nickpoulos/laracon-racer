@@ -21,7 +21,7 @@ class RaceController extends Controller
             'life_bonus' => 'required|integer|min:0',
             'final_score' => 'required|integer|min:0',
             'race_time' => 'required|integer|min:0', // Now expects milliseconds
-            'vehicle' => 'required|string|in:LAMBO,TRUCK,BIKE',
+            'vehicle' => 'required|string|in:Laravel Lambo,TypeScript Truck,CSS Cycle',
             'driver' => 'required|string|max:255',
             'lives_remaining' => 'required|integer|min:0|max:10',
         ]);
