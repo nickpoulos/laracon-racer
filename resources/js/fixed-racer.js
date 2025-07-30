@@ -56,6 +56,34 @@ const DRIVERS = [
     { name: 'EVAN YOU', img: '/img/evan-you.png' }
 ];
 
+// Powerup data
+const POWERUPS = [
+    { 
+        type: 'laravel', 
+        src: '/img/powerup-laravel.png', 
+        width: 50, 
+        height: 50,
+        vehicleBonus: 'Laravel Lambo',
+        driverBonus: 'TAYLOR OTWELL'
+    },
+    { 
+        type: 'vue', 
+        src: '/img/powerup-vue.png', 
+        width: 50, 
+        height: 50,
+        vehicleBonus: 'TypeScript Truck',
+        driverBonus: 'EVAN YOU'
+    },
+    { 
+        type: 'tailwind', 
+        src: '/img/powerup-tailwind.png', 
+        width: 50, 
+        height: 50,
+        vehicleBonus: 'CSS Cycle',
+        driverBonus: 'ADAM WATHAN'
+    }
+];
+
 // Helper functions
 Number.prototype.pad = function (numZeros, char = 0) {
     let n = Math.abs(this);
@@ -156,6 +184,21 @@ class Car {
     }
 }
 
+// Powerup class - fixed position, different behavior than cars
+class Powerup {
+    constructor(pos, type, lane) {
+        this.pos = pos;
+        this.type = type;
+        this.lane = lane;
+        this.collected = false;
+
+        var element = document.createElement('div');
+        element.style.position = 'absolute';
+        document.getElementById('road').appendChild(element);
+        this.element = element;
+    }
+}
+
 // Main game class
 class FixedRacer {
     constructor() {
@@ -184,6 +227,13 @@ class FixedRacer {
         this.lastCollisionTime = 0; // Track last collision time
         this.collisionCooldown = 1000; // 1 second cooldown between collisions
         this.raceCompleted = false; // Track if race was completed vs failed
+
+        // Powerup system
+        this.powerups = [];
+        this.invincible = false;
+        this.invincibilityEndTime = 0;
+        this.lastPowerupSpawn = 0;
+        this.powerupSpawnCooldown = 5000; // 5 seconds minimum between powerups
 
         // Vehicle stats
         this.maxSpeed = MAX_SPEED; // Default to original max speed
@@ -239,6 +289,10 @@ class FixedRacer {
                         <div style="display: flex; align-items: center; gap: 8px;">
                             <span style="background: white; color: #0082df; border: 2px solid #0082df; border-radius: 15px; padding: 4px 12px; font-family: 'Press Start 2P', monospace; font-size: 10px;">TIME</span>
                             <span id="lap" style="color: #0082df; font-family: 'Press Start 2P', monospace; font-size: 16px; text-shadow: -2px 0 black, 0 2px black, 2px 0 black, 0 -2px black; letter-spacing: 1px;">0'00"000</span>
+                        </div>
+                        <!-- Invincibility indicator -->
+                        <div id="invincibility-indicator" style="display: none; align-items: center; gap: 8px;">
+                            <span style="background: white; color: #ffd700; border: 2px solid #ffd700; border-radius: 15px; padding: 4px 12px; font-family: 'Press Start 2P', monospace; font-size: 10px; animation: blink 0.5s infinite;">INVINCIBLE</span>
                         </div>
                     </div>
                     <!-- Speed tacho in bottom right -->
@@ -642,6 +696,62 @@ class FixedRacer {
         this.cars.push(new Car(70, carType, LANES.A));  // Furthest in left lane
     }
 
+    spawnPowerup() {
+        const now = Date.now();
+        
+        // Only spawn if enough time has passed and random chance (much rarer than cars)
+        if (now - this.lastPowerupSpawn > this.powerupSpawnCooldown && Math.random() < 0.02) {
+            // Random powerup type
+            const powerupType = POWERUPS[Math.floor(Math.random() * POWERUPS.length)];
+            
+            // Random lane
+            const lanes = Object.values(LANES);
+            const randomLane = lanes[Math.floor(Math.random() * lanes.length)];
+            
+            // Fixed position far ahead of player
+            const powerupPos = 60 + Math.random() * 20; // Between positions 60-80
+            
+            const powerup = new Powerup(powerupPos, powerupType, randomLane);
+            this.powerups.push(powerup);
+            
+            this.lastPowerupSpawn = now;
+        }
+    }
+
+    collectPowerup(powerup) {
+        const baseScore = 500;
+        let totalScore = baseScore;
+        let vehicleBonus = 0;
+        let driverBonus = 0;
+        let invincibilityGranted = false;
+
+        // Check vehicle bonus
+        if (this.selectedVehicle.name === powerup.type.vehicleBonus) {
+            vehicleBonus = 250;
+            totalScore += vehicleBonus;
+        }
+
+        // Check driver bonus
+        if (this.selectedDriver.name === powerup.type.driverBonus) {
+            driverBonus = 250;
+            totalScore += driverBonus;
+        }
+
+        // Check for perfect match (both vehicle and driver bonus)
+        if (vehicleBonus > 0 && driverBonus > 0) {
+            // Grant 10 seconds of invincibility
+            this.invincible = true;
+            this.invincibilityEndTime = Date.now() + 10000; // 10 seconds
+            invincibilityGranted = true;
+        }
+
+        // Add score
+        this.scoreVal += totalScore;
+
+        // Show powerup collection feedback (you could add visual effects here)
+        console.log(`Collected ${powerup.type.type} powerup! Score: +${totalScore}${invincibilityGranted ? ' + Invincibility!' : ''}`);
+    }
+
     startGameLoop() {
         let then = Date.now();
         const targetFrameRate = 1000 / 25;
@@ -777,9 +887,9 @@ class FixedRacer {
                 const offsetRatio = 5;
                 if ((car.pos | 0) === startPos &&
                     isCollide(this.playerX * offsetRatio + LANES.B, 0.5, car.lane, 0.5)) {
-                    // Check if enough time has passed since last collision
+                    // Check if enough time has passed since last collision AND not invincible
                     const now = Date.now();
-                    if (now - this.lastCollisionTime > this.collisionCooldown) {
+                    if (!this.invincible && now - this.lastCollisionTime > this.collisionCooldown) {
                         this.speed = Math.min(HIT_SPEED, this.speed);
                         this.lives--;
                         this.lastCollisionTime = now; // Update last collision time
@@ -792,6 +902,54 @@ class FixedRacer {
                             this.gameOver();
                         }
                     }
+                }
+            }
+        }
+
+        // Update powerups - they don't move like cars, they're fixed positions
+        if (this.inGame) {
+            // Try to spawn new powerups
+            this.spawnPowerup();
+
+            // Update invincibility
+            const now = Date.now();
+            if (this.invincible && now > this.invincibilityEndTime) {
+                this.invincible = false;
+                document.getElementById('invincibility-indicator').style.display = 'none';
+            }
+
+            // Update invincibility indicator visibility
+            const invincibilityIndicator = document.getElementById('invincibility-indicator');
+            if (this.invincible) {
+                invincibilityIndicator.style.display = 'flex';
+            } else {
+                invincibilityIndicator.style.display = 'none';
+            }
+
+            // Check powerup collisions
+            for (let i = this.powerups.length - 1; i >= 0; i--) {
+                const powerup = this.powerups[i];
+                
+                // Remove powerups that are behind the player (using a more lenient check)
+                if (powerup.pos < (this.pos / SEGMENT_LENGTH) - 10) {
+                    powerup.element.remove();
+                    this.powerups.splice(i, 1);
+                    continue;
+                }
+                
+                // Check collision with player
+                const offsetRatio = 5;
+                if ((powerup.pos | 0) === startPos &&
+                    isCollide(this.playerX * offsetRatio + LANES.B, 0.5, powerup.lane, 0.5) &&
+                    !powerup.collected) {
+                    
+                    // Collect powerup
+                    powerup.collected = true;
+                    this.collectPowerup(powerup);
+                    
+                    // Remove from game
+                    powerup.element.remove();
+                    this.powerups.splice(i, 1);
                 }
             }
         }
@@ -832,6 +990,13 @@ class FixedRacer {
             for (let car of this.cars) {
                 if ((car.pos | 0) === n % N) {
                     l.drawSprite(level, car.element, car.type, car.lane);
+                }
+            }
+
+            // Draw powerups
+            for (let powerup of this.powerups) {
+                if ((powerup.pos | 0) === n % N && !powerup.collected) {
+                    l.drawSprite(level, powerup.element, powerup.type, powerup.lane);
                 }
             }
 
@@ -998,6 +1163,13 @@ class FixedRacer {
         this.lives = 3;
         this.lastCollisionTime = 0; // Reset collision time
         this.raceCompleted = false; // Reset completion status
+
+        // Reset powerup system
+        this.powerups.forEach(powerup => powerup.element.remove());
+        this.powerups = [];
+        this.invincible = false;
+        this.invincibilityEndTime = 0;
+        this.lastPowerupSpawn = 0;
 
         // Reset vehicle stats to defaults
         this.maxSpeed = MAX_SPEED;
