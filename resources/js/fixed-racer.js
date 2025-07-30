@@ -536,7 +536,7 @@ class FixedRacer {
 
         switch (this.gameState) {
             case GAME_STATES.INTRO:
-                if (keyCode === 'Space') {
+                if (keyCode === 'Space' || keyCode === 'Enter') {
                     // Validate and store player information
                     const nameInput = document.getElementById('player-name');
                     const githubInput = document.getElementById('github-username');
@@ -576,15 +576,15 @@ class FixedRacer {
                 break;
 
             case GAME_STATES.VEHICLE_SELECT:
-                if (keyCode === 'ArrowLeft') {
+                if (keyCode === 'ArrowLeft' || keyCode === 'KeyA') {
                     this.currentVehicleIndex = (this.currentVehicleIndex - 1 + VEHICLES.length) % VEHICLES.length;
                     this.showVehicleSelect();
                     this.audio.playMenu1(); // Navigation sound
-                } else if (keyCode === 'ArrowRight') {
+                } else if (keyCode === 'ArrowRight' || keyCode === 'KeyD') {
                     this.currentVehicleIndex = (this.currentVehicleIndex + 1) % VEHICLES.length;
                     this.showVehicleSelect();
                     this.audio.playMenu1(); // Navigation sound
-                } else if (keyCode === 'Space') {
+                } else if (keyCode === 'Space' || keyCode === 'Enter') {
                     this.selectedVehicle = VEHICLES[this.currentVehicleIndex];
                     this.gameState = GAME_STATES.DRIVER_SELECT;
                     this.showDriverSelect();
@@ -598,15 +598,15 @@ class FixedRacer {
                 break;
 
             case GAME_STATES.DRIVER_SELECT:
-                if (keyCode === 'ArrowLeft') {
+                if (keyCode === 'ArrowLeft' || keyCode === 'KeyA') {
                     this.currentDriverIndex = (this.currentDriverIndex - 1 + DRIVERS.length) % DRIVERS.length;
                     this.showDriverSelect();
                     this.audio.playMenu1(); // Navigation sound
-                } else if (keyCode === 'ArrowRight') {
+                } else if (keyCode === 'ArrowRight' || keyCode === 'KeyD') {
                     this.currentDriverIndex = (this.currentDriverIndex + 1) % DRIVERS.length;
                     this.showDriverSelect();
                     this.audio.playMenu1(); // Navigation sound
-                } else if (keyCode === 'Space') {
+                } else if (keyCode === 'Space' || keyCode === 'Enter') {
                     this.selectedDriver = DRIVERS[this.currentDriverIndex];
                     this.gameState = GAME_STATES.RACING;
                     this.startRace();
@@ -620,7 +620,7 @@ class FixedRacer {
                 break;
 
             case GAME_STATES.GAME_OVER:
-                if (keyCode === 'Space') {
+                if (keyCode === 'Space' || keyCode === 'Enter') {
                     this.resetGame();
                     this.gameState = GAME_STATES.INTRO;
                     this.showIntroScreen();
@@ -1004,7 +1004,7 @@ class FixedRacer {
         this.playerX -= (this.lines[startPos].curve / 5000) * step * this.speed;
 
         const hero = document.getElementById('hero');
-        if (this.keys['ArrowRight']) {
+        if (this.keys['ArrowRight'] || this.keys['KeyD']) {
             if (this.selectedVehicle.name === 'CSS Cycle') {
                 hero.style.backgroundPosition = `-98px 0`; // Right turn for high-res bike (third frame scaled)
             } else if (this.selectedVehicle.name === 'TypeScript Truck') {
@@ -1015,7 +1015,7 @@ class FixedRacer {
                 hero.style.backgroundPosition = '-220px 0'; // Right turn for cars
             }
             this.playerX += 0.007 * step * this.speed;
-        } else if (this.keys['ArrowLeft']) {
+        } else if (this.keys['ArrowLeft'] || this.keys['KeyA']) {
             hero.style.backgroundPosition = '0 0'; // Left turn (same for all)
             this.playerX -= 0.007 * step * this.speed;
         } else {
@@ -1033,9 +1033,9 @@ class FixedRacer {
         this.playerX = this.playerX.clamp(-3, 3);
 
         // Speed control - using vehicle-specific stats
-        if (this.inGame && this.keys['ArrowUp']) {
+        if (this.inGame && (this.keys['ArrowUp'] || this.keys['KeyW'])) {
             this.speed = accelerate(this.speed, this.vehicleAccel, step); // Use vehicle accel
-        } else if (this.keys['ArrowDown']) {
+        } else if (this.keys['ArrowDown'] || this.keys['KeyS']) {
             this.speed = accelerate(this.speed, BREAKING, step);
         } else {
             this.speed = accelerate(this.speed, DECEL, step);
