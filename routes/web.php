@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Response;
+use App\Http\Controllers\RaceController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -19,3 +20,7 @@ Route::get('/images/{filename}', function ($filename) {
     
     return response($file)->header('Content-Type', $mimeType);
 });
+
+// Race API endpoints
+Route::post('/api/races', [RaceController::class, 'store']);
+Route::get('/api/races/leaderboard', [RaceController::class, 'leaderboard']);

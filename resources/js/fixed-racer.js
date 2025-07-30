@@ -162,6 +162,10 @@ class FixedRacer {
         this.selectedDriver = null;
         this.currentVehicleIndex = 0;
         this.currentDriverIndex = 0;
+        
+        // Player info for leaderboard
+        this.playerName = '';
+        this.githubUsername = '';
 
         // Game variables - match working version naming
         this.inGame = false;
@@ -254,6 +258,17 @@ class FixedRacer {
 
     setupInput() {
         window.addEventListener('keydown', (e) => {
+            // Allow normal typing in input fields
+            if (e.target.tagName === 'INPUT') {
+                // Only handle Space key for game navigation when in input fields
+                if (e.code === 'Space') {
+                    this.keys[e.code] = true;
+                    this.handleKeyPress(e.code);
+                    e.preventDefault();
+                }
+                return; // Don't prevent default for other keys in input fields
+            }
+            
             this.keys[e.code] = true;
             this.handleKeyPress(e.code);
             e.preventDefault();
@@ -268,9 +283,42 @@ class FixedRacer {
         switch (this.gameState) {
             case GAME_STATES.INTRO:
                 if (keyCode === 'Space') {
+                    // Validate and store player information
+                    const nameInput = document.getElementById('player-name');
+                    const githubInput = document.getElementById('github-username');
+                    const validationMessage = document.getElementById('validation-message');
+                    
+                    if (nameInput && githubInput) {
+                        this.playerName = nameInput.value.trim();
+                        this.githubUsername = githubInput.value.trim();
+                        
+                        // Basic validation
+                        if (!this.playerName || !this.githubUsername) {
+                            validationMessage.style.display = 'block';
+                            validationMessage.textContent = 'Please fill in both name and GitHub username';
+                            return;
+                        }
+                        
+                        // GitHub username validation (basic)
+                        const githubRegex = /^[a-zA-Z0-9]([a-zA-Z0-9\-])*[a-zA-Z0-9]$/;
+                        let cleanUsername = this.githubUsername.replace(/^@/, ''); // Remove @ if present
+                        if (!githubRegex.test(cleanUsername) || cleanUsername.length > 39) {
+                            validationMessage.style.display = 'block';
+                            validationMessage.textContent = 'Please enter a valid GitHub username';
+                            return;
+                        }
+                        
+                        // Store clean username (without @)
+                        this.githubUsername = cleanUsername;
+                        
+                        // Hide validation message and proceed
+                        validationMessage.style.display = 'none';
+                    }
+                    
                     this.gameState = GAME_STATES.VEHICLE_SELECT;
                     this.showVehicleSelect();
                 }
+                // ESC on intro screen does nothing (already at first screen)
                 break;
 
             case GAME_STATES.VEHICLE_SELECT:
@@ -284,6 +332,10 @@ class FixedRacer {
                     this.selectedVehicle = VEHICLES[this.currentVehicleIndex];
                     this.gameState = GAME_STATES.DRIVER_SELECT;
                     this.showDriverSelect();
+                } else if (keyCode === 'Escape') {
+                    // Go back to intro screen
+                    this.gameState = GAME_STATES.INTRO;
+                    this.showIntroScreen();
                 }
                 break;
 
@@ -292,11 +344,20 @@ class FixedRacer {
                     this.selectedDriver = DRIVERS[0];
                     this.gameState = GAME_STATES.RACING;
                     this.startRace();
+                } else if (keyCode === 'Escape') {
+                    // Go back to vehicle selection
+                    this.gameState = GAME_STATES.VEHICLE_SELECT;
+                    this.showVehicleSelect();
                 }
                 break;
 
             case GAME_STATES.GAME_OVER:
                 if (keyCode === 'Space') {
+                    this.resetGame();
+                    this.gameState = GAME_STATES.INTRO;
+                    this.showIntroScreen();
+                } else if (keyCode === 'Escape') {
+                    // ESC also restarts from intro (same as Space)
                     this.resetGame();
                     this.gameState = GAME_STATES.INTRO;
                     this.showIntroScreen();
@@ -311,12 +372,42 @@ class FixedRacer {
         const instructions = document.getElementById('menu-instructions');
 
         menu.style.display = 'flex';
-        content.innerHTML = '<p style="font-size: 1.2em; text-align: center; animation: blink 1s infinite;">PRESS SPACE TO START</p>';
-        instructions.innerHTML = '<div style="font-size: 12px; text-align: center;"><span style="color: #ff6600; font-size: 28px; letter-spacing: -10px; margin-right: 10px; position: relative; top: 2px;">← →</span> Navigate/Steer • <span style="color: #ff6600;">↑ ↓</span> Accelerate/Brake • <span style="color: #ff6600;">SPACE</span> Select/Start</div>';
+        content.innerHTML = `
+            <div style="text-align: center; max-width: 400px;">
+                <p style="font-size: 1.2em; margin-bottom: 30px; color: #ffffff;">Enter your details to compete on the leaderboard!</p>
+                
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; color: #ff6600; font-size: 12px; margin-bottom: 8px; text-align: left;">PLAYER NAME</label>
+                    <input id="player-name" type="text" maxlength="20" placeholder="Enter your name" 
+                           style="width: 100%; padding: 10px; font-family: 'Press Start 2P', monospace; font-size: 10px; 
+                                  background: #222; color: #ffffff; border: 2px solid #ff6600; border-radius: 5px; 
+                                  text-align: center; outline: none;"
+                           value="${this.playerName}">
+                </div>
+                
+                <div style="margin-bottom: 30px;">
+                    <label style="display: block; color: #ff6600; font-size: 12px; margin-bottom: 8px; text-align: left;">GITHUB USERNAME</label>
+                    <input id="github-username" type="text" maxlength="39" placeholder="Enter GitHub username (without @)" 
+                           style="width: 100%; padding: 10px; font-family: 'Press Start 2P', monospace; font-size: 10px; 
+                                  background: #222; color: #ffffff; border: 2px solid #ff6600; border-radius: 5px; 
+                                  text-align: center; outline: none;"
+                           value="${this.githubUsername}">
+                </div>
+                
+                <p id="start-prompt" style="font-size: 1.2em; animation: blink 1s infinite;">PRESS SPACE TO START</p>
+                <p id="validation-message" style="color: #ff0000; font-size: 10px; margin-top: 10px; display: none;">Please fill in both name and GitHub username</p>
+            </div>
+        `;
+        instructions.innerHTML = '<div style="font-size: 12px; text-align: center;"><span style="color: #ff6600; font-size: 28px; letter-spacing: -10px; margin-right: 10px; position: relative; top: 2px;">← →</span> Navigate/Steer • <span style="color: #ff6600;">↑ ↓</span> Accelerate/Brake • <span style="color: #ff6600;">SPACE</span> Select/Start • <span style="color: #ff6600;">ESC</span> Back</div>';
 
         const style = document.createElement('style');
         style.textContent = '@keyframes blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }';
         document.head.appendChild(style);
+        
+        // Focus on name input initially
+        setTimeout(() => {
+            document.getElementById('player-name').focus();
+        }, 100);
     }
 
     showVehicleSelect() {
@@ -335,7 +426,7 @@ class FixedRacer {
             </div>
         `;
 
-        document.getElementById('menu-instructions').innerHTML = '<div style="font-size: 12px; text-align: center;"><span style="color: #ff6600;font-size: 28px; letter-spacing: -10px; margin-right: 10px; position: relative; top: 2px;">← →</span> Navigate • <span style="color: #ff6600;">SPACE</span> Select</div>';
+        document.getElementById('menu-instructions').innerHTML = '<div style="font-size: 12px; text-align: center;"><span style="color: #ff6600;font-size: 28px; letter-spacing: -10px; margin-right: 10px; position: relative; top: 2px;">← →</span> Navigate • <span style="color: #ff6600;">SPACE</span> Select • <span style="color: #ff6600;">ESC</span> Back</div>';
     }
 
     showDriverSelect() {
@@ -350,7 +441,7 @@ class FixedRacer {
             </div>
         `;
 
-        document.getElementById('menu-instructions').innerHTML = '<div style="font-size: 12px; text-align: center;"><span style="color: #ff6600;">SPACE</span> Select</div>';
+        document.getElementById('menu-instructions').innerHTML = '<div style="font-size: 12px; text-align: center;"><span style="color: #ff6600;">SPACE</span> Select • <span style="color: #ff6600;">ESC</span> Back</div>';
     }
 
     startRace() {
@@ -761,15 +852,17 @@ class FixedRacer {
     }
 
     calculateFinalScore() {
-        const raceTime = Math.floor((Date.now() - this.start) / 1000); // Time in seconds
+        const raceTimeMs = Date.now() - this.start; // Time in milliseconds
+        const raceTimeSeconds = Math.floor(raceTimeMs / 1000); // Time in seconds for penalty calculation
         const baseScore = Math.floor(this.scoreVal);
-        const timePenalty = raceTime; // 1 point deducted per second
+        const timePenalty = raceTimeSeconds; // 1 point deducted per second
         const lifeBonus = this.lives * 100; // 100 points per life remaining
         const finalScore = Math.max(0, baseScore - timePenalty + lifeBonus);
 
         return {
             baseScore,
-            raceTime,
+            raceTimeMs, // Store milliseconds for precise timing
+            raceTimeSeconds, // Keep seconds for penalty display
             timePenalty,
             lifeBonus,
             livesRemaining: this.lives,
@@ -783,6 +876,9 @@ class FixedRacer {
 
         const scoreData = this.calculateFinalScore();
 
+        // Submit score to leaderboard
+        this.submitToLeaderboard(scoreData);
+
         document.getElementById('menu').style.display = 'flex';
         document.getElementById('menu-content').innerHTML = `
             <h2 style="color: #ff0000; margin-bottom: 20px; font-size: 1.8em; text-align: center;">GAME OVER</h2>
@@ -794,7 +890,7 @@ class FixedRacer {
                         <span style="color: #4cff00;">+${scoreData.baseScore}</span>
                     </div>
                     <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                        <span style="color: #ffffff;">Time Penalty (${scoreData.raceTime}s):</span>
+                        <span style="color: #ffffff;">Time Penalty (${scoreData.raceTimeSeconds}s):</span>
                         <span style="color: #ff0000;">-${scoreData.timePenalty}</span>
                     </div>
                     <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
@@ -808,10 +904,48 @@ class FixedRacer {
                         </div>
                     </div>
                 </div>
+                <div id="leaderboard-status" style="margin-top: 15px; font-size: 10px; color: #4cff00;">Submitting to leaderboard...</div>
                 <p style="margin-top: 20px; animation: blink 1s infinite; text-align: center; font-size: 1.1em;">PRESS SPACE TO RESTART</p>
             </div>
         `;
         document.getElementById('menu-instructions').innerHTML = '';
+    }
+
+    async submitToLeaderboard(scoreData) {
+        const statusElement = document.getElementById('leaderboard-status');
+        
+        try {
+            if (window.leaderboard) {
+                const raceData = {
+                    player_name: this.playerName,
+                    github_username: this.githubUsername, // Will have @ added by backend if missing
+                    base_score: scoreData.baseScore,
+                    time_penalty: scoreData.timePenalty,
+                    life_bonus: scoreData.lifeBonus,
+                    final_score: scoreData.finalScore,
+                    race_time: scoreData.raceTimeMs, // Send milliseconds to database
+                    vehicle: this.selectedVehicle.name,
+                    driver: this.selectedDriver.name,
+                    lives_remaining: scoreData.livesRemaining
+                };
+
+                const success = await window.leaderboard.submitRace(raceData);
+                
+                if (success && statusElement) {
+                    statusElement.textContent = '✓ Score submitted to leaderboard!';
+                    statusElement.style.color = '#4cff00';
+                } else if (statusElement) {
+                    statusElement.textContent = '✗ Failed to submit score';
+                    statusElement.style.color = '#ff0000';
+                }
+            }
+        } catch (error) {
+            console.error('Error submitting to leaderboard:', error);
+            if (statusElement) {
+                statusElement.textContent = '✗ Error submitting score';
+                statusElement.style.color = '#ff0000';
+            }
+        }
     }
 
     resetGame() {
