@@ -183,6 +183,7 @@ class FixedRacer {
         this.lives = 3;
         this.lastCollisionTime = 0; // Track last collision time
         this.collisionCooldown = 1000; // 1 second cooldown between collisions
+        this.raceCompleted = false; // Track if race was completed vs failed
 
         // Vehicle stats
         this.maxSpeed = MAX_SPEED; // Default to original max speed
@@ -426,8 +427,8 @@ class FixedRacer {
                 ${VEHICLES.map((vehicle, index) => `
                     <div style="text-align: center; border: ${index === this.currentVehicleIndex ? '4px solid #ff6600' : '2px solid #666'}; padding: 20px; border-radius: 10px; background: ${index === this.currentVehicleIndex ? 'rgba(255, 102, 0, 0.2)' : 'transparent'};">
                         <div style="width: 100%; height: 80px; background: url('${vehicle.img}') center/cover; margin: 0 auto 10px auto; border-radius: 5px;"></div>
-                        <h3 style="font-size: 1.2em; color: ${index === this.currentVehicleIndex ? '#ff6600' : 'white'}; text-align: center;">${vehicle.name}</h3>
-                        <p style="font-size: 0.9em; text-align: center;">Speed: ${vehicle.speed}</p>
+                        <h3 style="font-size: 1.2em; color: ${index === this.currentVehicleIndex ? '#ff6600' : 'white'}; text-align: center;margin-bottom:20px;">${vehicle.name}</h3>
+                        <p style="font-size: 0.9em; text-align: center;">Speed: ${vehicle.speed} MPH</p>
                         <p style="font-size: 0.9em; text-align: center;">Accel: ${vehicle.accel}</p>
                     </div>
                 `).join('')}
@@ -740,6 +741,7 @@ class FixedRacer {
             this.speed = accelerate(this.speed, BREAKING, step);
             this.speed = this.speed.clamp(0, MAX_SPEED);
         } else if (this.countDown <= 0 || this.lines[startPos].special) {
+            this.raceCompleted = true; // Player completed the race
             this.gameOver();
         } else {
             // Update UI
@@ -883,7 +885,8 @@ class FixedRacer {
         const baseScore = Math.floor(this.scoreVal);
         const timePenalty = raceTimeSeconds; // 1 point deducted per second
         const lifeBonus = this.lives * 100; // 100 points per life remaining
-        const finalScore = Math.max(0, baseScore - timePenalty + lifeBonus);
+        const completionBonus = this.raceCompleted ? 1000 : 0; // 1000 points for completing the race
+        const finalScore = Math.max(0, baseScore - timePenalty + lifeBonus + completionBonus);
 
         return {
             baseScore,
@@ -891,6 +894,7 @@ class FixedRacer {
             raceTimeSeconds, // Keep seconds for penalty display
             timePenalty,
             lifeBonus,
+            completionBonus,
             livesRemaining: this.lives,
             finalScore
         };
@@ -919,10 +923,16 @@ class FixedRacer {
                         <span style="color: #ffffff;">Time Penalty (${scoreData.raceTimeSeconds}s):</span>
                         <span style="color: #ff0000;">-${scoreData.timePenalty}</span>
                     </div>
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
                         <span style="color: #ffffff;">Life Bonus (${scoreData.livesRemaining} × 100):</span>
                         <span style="color: #4cff00;">+${scoreData.lifeBonus}</span>
                     </div>
+                    ${scoreData.completionBonus > 0 ? `
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
+                        <span style="color: #ffffff;">Completion Bonus:</span>
+                        <span style="color: #4cff00;">+${scoreData.completionBonus}</span>
+                    </div>
+                    ` : '<div style="margin-bottom: 15px;"></div>'}
                     <div style="border-top: 2px solid #ffffff; padding-top: 10px;">
                         <div style="display: flex; justify-content: space-between;">
                             <span style="color: #ff6600; font-size: 18px; font-weight: bold;">FINAL SCORE:</span>
@@ -987,6 +997,7 @@ class FixedRacer {
         this.mapIndex = 0;
         this.lives = 3;
         this.lastCollisionTime = 0; // Reset collision time
+        this.raceCompleted = false; // Reset completion status
 
         // Reset vehicle stats to defaults
         this.maxSpeed = MAX_SPEED;
