@@ -84,6 +84,13 @@ const POWERUPS = [
     }
 ];
 
+// Obstacle car sprites - scaled down from original high-res dimensions
+const OBSTACLE_CARS = [
+    { src: '/img/car1.png', width: 55, height: 48 }, // Scaled from 1375x1189
+    { src: '/img/car2.png', width: 60, height: 41 }, // Scaled from 1709x1169  
+    { src: '/img/car3.png', width: 50, height: 34 }  // Scaled from 1202x806
+];
+
 // Helper functions
 Number.prototype.pad = function (numZeros, char = 0) {
     let n = Math.abs(this);
@@ -683,17 +690,17 @@ class FixedRacer {
 
     spawnCars() {
         this.cars = [];
-        const carType = { src: '/img/car04.png', width: 50, height: 36 };
 
         // Position cars well ahead of the player to prevent any immediate collisions
         // Using positions that ensure they start well ahead and in different lanes
-        this.cars.push(new Car(30, carType, LANES.A));  // Far ahead in left lane
-        this.cars.push(new Car(35, carType, LANES.C));  // Far ahead in right lane
-        this.cars.push(new Car(40, carType, LANES.B));  // Far ahead in center lane
-        this.cars.push(new Car(50, carType, LANES.A));  // Even further in left lane
-        this.cars.push(new Car(55, carType, LANES.C));  // Even further in right lane
-        this.cars.push(new Car(65, carType, LANES.B));  // Even further in center lane
-        this.cars.push(new Car(70, carType, LANES.A));  // Furthest in left lane
+        // Each car randomly selects from the new obstacle car sprites
+        this.cars.push(new Car(30, OBSTACLE_CARS[Math.floor(Math.random() * OBSTACLE_CARS.length)], LANES.A));  // Far ahead in left lane
+        this.cars.push(new Car(35, OBSTACLE_CARS[Math.floor(Math.random() * OBSTACLE_CARS.length)], LANES.C));  // Far ahead in right lane
+        this.cars.push(new Car(40, OBSTACLE_CARS[Math.floor(Math.random() * OBSTACLE_CARS.length)], LANES.B));  // Far ahead in center lane
+        this.cars.push(new Car(50, OBSTACLE_CARS[Math.floor(Math.random() * OBSTACLE_CARS.length)], LANES.A));  // Even further in left lane
+        this.cars.push(new Car(55, OBSTACLE_CARS[Math.floor(Math.random() * OBSTACLE_CARS.length)], LANES.C));  // Even further in right lane
+        this.cars.push(new Car(65, OBSTACLE_CARS[Math.floor(Math.random() * OBSTACLE_CARS.length)], LANES.B));  // Even further in center lane
+        this.cars.push(new Car(70, OBSTACLE_CARS[Math.floor(Math.random() * OBSTACLE_CARS.length)], LANES.A));  // Furthest in left lane
     }
 
     spawnPowerup() {
@@ -880,6 +887,8 @@ class FixedRacer {
                 if (this.speed < 30) car.pos = startPos;
                 else car.pos = endPos - 2;
                 car.lane = randomProperty(LANES);
+                // Randomize car type on respawn for more variety
+                car.type = OBSTACLE_CARS[Math.floor(Math.random() * OBSTACLE_CARS.length)];
             }
 
             // Collision - only check if game is actually running (not during countdown)
