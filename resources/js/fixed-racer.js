@@ -662,11 +662,11 @@ class FixedRacer {
                            value="${this.githubUsername}">
                 </div>
 
-                <p id="start-prompt" style="font-size: 1.2em; animation: blink 1s infinite;">PRESS SPACE TO START</p>
+                <p id="start-prompt" style="font-size: 1.8em; animation: blink 1s infinite; margin-top: 70px;">PRESS SPACE TO START</p>
                 <p id="validation-message" style="color: #ff0000; font-size: 10px; margin-top: 10px; display: none;">Please fill in both name and GitHub username</p>
             </div>
         `;
-        instructions.innerHTML = '<div style="font-size: 12px; text-align: center;"><span style="color: #ff6600; font-size: 28px; letter-spacing: -10px; margin-right: 10px; position: relative; top: 2px;">← →</span> Navigate/Steer • <span style="color: #ff6600;">↑ ↓</span> Accelerate/Brake • <span style="color: #ff6600;">SPACE</span> Select/Start • <span style="color: #ff6600;">ESC</span> Back • <span style="color: #ff6600;">M</span> Mute</div>';
+        instructions.innerHTML = '';
 
         const style = document.createElement('style');
         style.textContent = '@keyframes blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }';
@@ -689,7 +689,7 @@ class FixedRacer {
                         <h3 style="font-size: 1.2em; color: ${index === this.currentVehicleIndex ? '#ff6600' : 'white'}; text-align: center;margin-bottom:20px;">${vehicle.name}</h3>
                         <p style="font-size: 0.9em; text-align: center;">Speed: ${vehicle.speed} MPH</p>
                         <p style="font-size: 0.9em; text-align: center;">Accel: ${vehicle.accel}</p>
-                    </div> 
+                    </div>
                 `).join('')}
             </div>
         `;

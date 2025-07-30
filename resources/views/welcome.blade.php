@@ -32,31 +32,14 @@
             }
 
             #controls {
-                display: flex;
-                justify-content: center;
-                gap: 30px;
-                color: #fff;
-                font-size: 8px;
-                text-transform: uppercase;
+                font-size: 12px;
                 text-align: center;
+                color: #fff;
+                position: relative;
                 margin-bottom: 20px;
                 padding: 15px;
                 background: rgba(51, 51, 51, 0.3);
                 border-radius: 10px;
-            }
-
-            #controls span {
-                display: flex;
-                align-items: center;
-                gap: 5px;
-            }
-
-            #controls span span {
-                background: #333;
-                padding: 2px 6px;
-                border-radius: 3px;
-                font-weight: bold;
-                color: #ff6600;
             }
 
             #game-container {
@@ -153,6 +136,13 @@
     </head>
     <body>
         <div class="main-container">
+            <!-- Controls Panel -->
+            <div id="controls">
+                <div style="position: relative; top: -5px;">
+                    <span style="color: #ff6600; font-size: 28px; letter-spacing: -10px; margin-right: 10px; position: relative; top: 2px;">← →</span> Navigate/Steer • <span style="color: #ff6600;">↑ ↓</span> Accelerate/Brake • <span style="color: #ff6600;">SPACE</span> Select/Start • <span style="color: #ff6600;">ESC</span> Back • <span style="color: #ff6600;">M</span> Mute
+                </div>
+            </div>
+
             <div id="game-container"></div>
 
             <div id="leaderboard" style="margin-top: 50px;">
@@ -176,14 +166,14 @@
                         console.log('Loading leaderboard from:', '/api/races/leaderboard');
                         const response = await fetch('/api/races/leaderboard');
                         console.log('Response status:', response.status);
-                        
+
                         if (!response.ok) {
                             const errorText = await response.text();
                             console.error('HTTP Error:', response.status, errorText);
                             content.innerHTML = `<div class="error">Error loading leaderboard (${response.status})</div>`;
                             return;
                         }
-                        
+
                         const data = await response.json();
                         console.log('Leaderboard data:', data);
 
