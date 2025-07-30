@@ -47,11 +47,13 @@ const GAME_STATES = {
 const VEHICLES = [
     { name: 'Laravel Lambo', speed: 220, accel: 40, img: '/img/lambo.jpg', sprite: '/img/hero-hires.png', width: 110, height: 53 },
     { name: 'TypeScript Truck', speed: 180, accel: 35, img: '/img/truck.jpg', sprite: '/img/hero-truck-hires.png', width: 110, height: 72 },
-    { name: 'CSS Cycle', speed: 260, accel: 45, img: '/img/motorcycle.jpg', sprite: '/img/hero-cycle.png', width: 49, height: 55 }
+    { name: 'CSS Cycle', speed: 260, accel: 45, img: '/img/motorcycle.jpg', sprite: '/img/hero-cycle-hires.png', width: 49, height: 53 }
 ];
 
 const DRIVERS = [
-    { name: 'TAYLOR', img: '/img/taylor.jpg' }
+    { name: 'TAYLOR OTWELL', img: '/img/taylor-otwell.png' },
+    { name: 'ADAM WATHAN', img: '/img/adam-wathan.png' },
+    { name: 'EVAN YOU', img: '/img/evan-you.png' }
 ];
 
 // Helper functions
@@ -340,8 +342,14 @@ class FixedRacer {
                 break;
 
             case GAME_STATES.DRIVER_SELECT:
-                if (keyCode === 'Space') {
-                    this.selectedDriver = DRIVERS[0];
+                if (keyCode === 'ArrowLeft') {
+                    this.currentDriverIndex = (this.currentDriverIndex - 1 + DRIVERS.length) % DRIVERS.length;
+                    this.showDriverSelect();
+                } else if (keyCode === 'ArrowRight') {
+                    this.currentDriverIndex = (this.currentDriverIndex + 1) % DRIVERS.length;
+                    this.showDriverSelect();
+                } else if (keyCode === 'Space') {
+                    this.selectedDriver = DRIVERS[this.currentDriverIndex];
                     this.gameState = GAME_STATES.RACING;
                     this.startRace();
                 } else if (keyCode === 'Escape') {
@@ -433,15 +441,17 @@ class FixedRacer {
         const content = document.getElementById('menu-content');
         content.innerHTML = `
             <h2 style="margin-bottom: 30px; font-size: 1.5em; text-align: center;">SELECT YOUR DRIVER</h2>
-            <div style="text-align: center;">
-                <div style="border: 4px solid #ff6600; padding: 20px; border-radius: 10px; display: inline-block; background: rgba(255, 102, 0, 0.2);">
-                    <div style="width: 120px; height: 120px; background: url('${DRIVERS[0].img}') center/cover; margin-bottom: 10px;"></div>
-                    <h3 style="font-size: 1.2em; color: #ff6600; text-align: center;">${DRIVERS[0].name}</h3>
-                </div>
+            <div style="display: flex; gap: 40px; justify-content: center;">
+                ${DRIVERS.map((driver, index) => `
+                    <div style="text-align: center; border: ${index === this.currentDriverIndex ? '4px solid #ff6600' : '2px solid #666'}; padding: 20px; border-radius: 10px; background: ${index === this.currentDriverIndex ? 'rgba(255, 102, 0, 0.2)' : 'transparent'};">
+                        <div style="width: 120px; height: 120px; background: url('${driver.img}') center/cover; margin: 0 auto 10px auto; border-radius: 5px;"></div>
+                        <h3 style="font-size: 1.2em; color: ${index === this.currentDriverIndex ? '#ff6600' : 'white'}; text-align: center;">${driver.name}</h3>
+                    </div>
+                `).join('')}
             </div>
         `;
 
-        document.getElementById('menu-instructions').innerHTML = '<div style="font-size: 12px; text-align: center;"><span style="color: #ff6600;">SPACE</span> Select • <span style="color: #ff6600;">ESC</span> Back</div>';
+        document.getElementById('menu-instructions').innerHTML = '<div style="font-size: 12px; text-align: center;"><span style="color: #ff6600; font-size: 28px; letter-spacing: -10px; margin-right: 10px; position: relative; top: 2px;">← →</span> Navigate • <span style="color: #ff6600;">SPACE</span> Select • <span style="color: #ff6600;">ESC</span> Back</div>';
     }
 
     startRace() {
@@ -481,8 +491,8 @@ class FixedRacer {
 
         // Set background position and size based on vehicle type
         if (this.selectedVehicle.name === 'CSS Cycle') {
-            hero.style.backgroundPosition = '-45px 0'; // Center position for bike (second frame)
-            hero.style.backgroundSize = 'auto';
+            hero.style.backgroundPosition = '-49px 0'; // Center position for high-res bike (second frame scaled)
+            hero.style.backgroundSize = '147px 53px'; // Scale down the high-res sprite (385*3 frames = 1155, scaled to 147px)
         } else if (this.selectedVehicle.name === 'TypeScript Truck') {
             hero.style.backgroundPosition = '-110px 0'; // Center position for high-res truck (second frame scaled)
             hero.style.backgroundSize = '330px 72px'; // Scale down the high-res sprite (805*3 frames = 2415, scaled to 330px)
@@ -670,7 +680,7 @@ class FixedRacer {
         const hero = document.getElementById('hero');
         if (this.keys['ArrowRight']) {
             if (this.selectedVehicle.name === 'CSS Cycle') {
-                hero.style.backgroundPosition = `-90px 0`; // Right turn for bike (third frame)
+                hero.style.backgroundPosition = `-98px 0`; // Right turn for high-res bike (third frame scaled)
             } else if (this.selectedVehicle.name === 'TypeScript Truck') {
                 hero.style.backgroundPosition = '-220px 0'; // Right turn for high-res truck (third frame scaled)
             } else if (this.selectedVehicle.name === 'Laravel Lambo') {
@@ -684,7 +694,7 @@ class FixedRacer {
             this.playerX -= 0.007 * step * this.speed;
         } else {
             if (this.selectedVehicle.name === 'CSS Cycle') {
-                hero.style.backgroundPosition = '-45px 0'; // Center position for bike (second frame)
+                hero.style.backgroundPosition = '-49px 0'; // Center position for high-res bike (second frame scaled)
             } else if (this.selectedVehicle.name === 'TypeScript Truck') {
                 hero.style.backgroundPosition = '-110px 0'; // Center position for high-res truck (second frame scaled)
             } else if (this.selectedVehicle.name === 'Laravel Lambo') {
