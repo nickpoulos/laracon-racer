@@ -45,13 +45,15 @@ const GAME_STATES = {
 
 // Vehicle data
 const VEHICLES = [
-    { name: 'Laravel Lambo', speed: 220, accel: 40, img: '/img/lambo.jpg', sprite: '/img/hero.png', width: 110, height: 56 },
-    { name: 'TypeScript Truck', speed: 180, accel: 35, img: '/img/truck.jpg', sprite: '/img/hero-truck.png', width: 110, height: 56 },
-    { name: 'CSS Cycle', speed: 260, accel: 45, img: '/img/motorcycle.jpg', sprite: '/img/hero-cycle.png', width: 49, height: 55 }
+    { name: 'Laravel Lambo', speed: 220, accel: 40, img: '/img/lambo.jpg', sprite: '/img/hero-hires.png', width: 110, height: 53 },
+    { name: 'TypeScript Truck', speed: 180, accel: 35, img: '/img/truck.jpg', sprite: '/img/hero-truck-hires.png', width: 110, height: 72 },
+    { name: 'CSS Cycle', speed: 260, accel: 45, img: '/img/motorcycle.jpg', sprite: '/img/hero-cycle-hires.png', width: 49, height: 53 }
 ];
 
 const DRIVERS = [
-    { name: 'TAYLOR', img: '/img/taylor.jpg' }
+    { name: 'TAYLOR OTWELL', img: '/img/taylor-otwell.png' },
+    { name: 'ADAM WATHAN', img: '/img/adam-wathan.png' },
+    { name: 'EVAN YOU', img: '/img/evan-you.png' }
 ];
 
 // Helper functions
@@ -162,7 +164,7 @@ class FixedRacer {
         this.selectedDriver = null;
         this.currentVehicleIndex = 0;
         this.currentDriverIndex = 0;
-        
+
         // Player info for leaderboard
         this.playerName = '';
         this.githubUsername = '';
@@ -268,7 +270,7 @@ class FixedRacer {
                 }
                 return; // Don't prevent default for other keys in input fields
             }
-            
+
             this.keys[e.code] = true;
             this.handleKeyPress(e.code);
             e.preventDefault();
@@ -287,18 +289,18 @@ class FixedRacer {
                     const nameInput = document.getElementById('player-name');
                     const githubInput = document.getElementById('github-username');
                     const validationMessage = document.getElementById('validation-message');
-                    
+
                     if (nameInput && githubInput) {
                         this.playerName = nameInput.value.trim();
                         this.githubUsername = githubInput.value.trim();
-                        
+
                         // Basic validation
                         if (!this.playerName || !this.githubUsername) {
                             validationMessage.style.display = 'block';
                             validationMessage.textContent = 'Please fill in both name and GitHub username';
                             return;
                         }
-                        
+
                         // GitHub username validation (basic)
                         const githubRegex = /^[a-zA-Z0-9]([a-zA-Z0-9\-])*[a-zA-Z0-9]$/;
                         let cleanUsername = this.githubUsername.replace(/^@/, ''); // Remove @ if present
@@ -307,14 +309,14 @@ class FixedRacer {
                             validationMessage.textContent = 'Please enter a valid GitHub username';
                             return;
                         }
-                        
+
                         // Store clean username (without @)
                         this.githubUsername = cleanUsername;
-                        
+
                         // Hide validation message and proceed
                         validationMessage.style.display = 'none';
                     }
-                    
+
                     this.gameState = GAME_STATES.VEHICLE_SELECT;
                     this.showVehicleSelect();
                 }
@@ -340,8 +342,14 @@ class FixedRacer {
                 break;
 
             case GAME_STATES.DRIVER_SELECT:
-                if (keyCode === 'Space') {
-                    this.selectedDriver = DRIVERS[0];
+                if (keyCode === 'ArrowLeft') {
+                    this.currentDriverIndex = (this.currentDriverIndex - 1 + DRIVERS.length) % DRIVERS.length;
+                    this.showDriverSelect();
+                } else if (keyCode === 'ArrowRight') {
+                    this.currentDriverIndex = (this.currentDriverIndex + 1) % DRIVERS.length;
+                    this.showDriverSelect();
+                } else if (keyCode === 'Space') {
+                    this.selectedDriver = DRIVERS[this.currentDriverIndex];
                     this.gameState = GAME_STATES.RACING;
                     this.startRace();
                 } else if (keyCode === 'Escape') {
@@ -375,25 +383,25 @@ class FixedRacer {
         content.innerHTML = `
             <div style="text-align: center; max-width: 400px;">
                 <p style="font-size: 1.2em; margin-bottom: 30px; color: #ffffff;">Enter your details to compete on the leaderboard!</p>
-                
+
                 <div style="margin-bottom: 20px;">
                     <label style="display: block; color: #ff6600; font-size: 12px; margin-bottom: 8px; text-align: left;">PLAYER NAME</label>
-                    <input id="player-name" type="text" maxlength="20" placeholder="Enter your name" 
-                           style="width: 100%; padding: 10px; font-family: 'Press Start 2P', monospace; font-size: 10px; 
-                                  background: #222; color: #ffffff; border: 2px solid #ff6600; border-radius: 5px; 
+                    <input id="player-name" type="text" maxlength="20" placeholder="Enter your name"
+                           style="width: 100%; padding: 10px; font-family: 'Press Start 2P', monospace; font-size: 10px;
+                                  background: #222; color: #ffffff; border: 2px solid #ff6600; border-radius: 5px;
                                   text-align: center; outline: none;"
                            value="${this.playerName}">
                 </div>
-                
+
                 <div style="margin-bottom: 30px;">
                     <label style="display: block; color: #ff6600; font-size: 12px; margin-bottom: 8px; text-align: left;">GITHUB USERNAME</label>
-                    <input id="github-username" type="text" maxlength="39" placeholder="Enter GitHub username (without @)" 
-                           style="width: 100%; padding: 10px; font-family: 'Press Start 2P', monospace; font-size: 10px; 
-                                  background: #222; color: #ffffff; border: 2px solid #ff6600; border-radius: 5px; 
+                    <input id="github-username" type="text" maxlength="39" placeholder="Enter GitHub username (without @)"
+                           style="width: 100%; padding: 10px; font-family: 'Press Start 2P', monospace; font-size: 10px;
+                                  background: #222; color: #ffffff; border: 2px solid #ff6600; border-radius: 5px;
                                   text-align: center; outline: none;"
                            value="${this.githubUsername}">
                 </div>
-                
+
                 <p id="start-prompt" style="font-size: 1.2em; animation: blink 1s infinite;">PRESS SPACE TO START</p>
                 <p id="validation-message" style="color: #ff0000; font-size: 10px; margin-top: 10px; display: none;">Please fill in both name and GitHub username</p>
             </div>
@@ -403,7 +411,7 @@ class FixedRacer {
         const style = document.createElement('style');
         style.textContent = '@keyframes blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }';
         document.head.appendChild(style);
-        
+
         // Focus on name input initially
         setTimeout(() => {
             document.getElementById('player-name').focus();
@@ -433,15 +441,17 @@ class FixedRacer {
         const content = document.getElementById('menu-content');
         content.innerHTML = `
             <h2 style="margin-bottom: 30px; font-size: 1.5em; text-align: center;">SELECT YOUR DRIVER</h2>
-            <div style="text-align: center;">
-                <div style="border: 4px solid #ff6600; padding: 20px; border-radius: 10px; display: inline-block; background: rgba(255, 102, 0, 0.2);">
-                    <div style="width: 120px; height: 120px; background: url('${DRIVERS[0].img}') center/cover; margin-bottom: 10px;"></div>
-                    <h3 style="font-size: 1.2em; color: #ff6600; text-align: center;">${DRIVERS[0].name}</h3>
-                </div>
+            <div style="display: flex; gap: 40px; justify-content: center;">
+                ${DRIVERS.map((driver, index) => `
+                    <div style="text-align: center; border: ${index === this.currentDriverIndex ? '4px solid #ff6600' : '2px solid #666'}; padding: 20px; border-radius: 10px; background: ${index === this.currentDriverIndex ? 'rgba(255, 102, 0, 0.2)' : 'transparent'};">
+                        <div style="width: 120px; height: 120px; background: url('${driver.img}') center/cover; margin: 0 auto 10px auto; border-radius: 5px;"></div>
+                        <h3 style="font-size: 1.2em; color: ${index === this.currentDriverIndex ? '#ff6600' : 'white'}; text-align: center;">${driver.name}</h3>
+                    </div>
+                `).join('')}
             </div>
         `;
 
-        document.getElementById('menu-instructions').innerHTML = '<div style="font-size: 12px; text-align: center;"><span style="color: #ff6600;">SPACE</span> Select • <span style="color: #ff6600;">ESC</span> Back</div>';
+        document.getElementById('menu-instructions').innerHTML = '<div style="font-size: 12px; text-align: center;"><span style="color: #ff6600; font-size: 28px; letter-spacing: -10px; margin-right: 10px; position: relative; top: 2px;">← →</span> Navigate • <span style="color: #ff6600;">SPACE</span> Select • <span style="color: #ff6600;">ESC</span> Back</div>';
     }
 
     startRace() {
@@ -479,11 +489,19 @@ class FixedRacer {
         hero.style.width = `${this.selectedVehicle.width}px`;
         hero.style.height = `${this.selectedVehicle.height}px`;
 
-        // Set background position based on vehicle type
+        // Set background position and size based on vehicle type
         if (this.selectedVehicle.name === 'CSS Cycle') {
-            hero.style.backgroundPosition = '-45px 0'; // Center position for bike (second frame)
+            hero.style.backgroundPosition = '-49px 0'; // Center position for high-res bike (second frame scaled)
+            hero.style.backgroundSize = '147px 53px'; // Scale down the high-res sprite (385*3 frames = 1155, scaled to 147px)
+        } else if (this.selectedVehicle.name === 'TypeScript Truck') {
+            hero.style.backgroundPosition = '-110px 0'; // Center position for high-res truck (second frame scaled)
+            hero.style.backgroundSize = '330px 72px'; // Scale down the high-res sprite (805*3 frames = 2415, scaled to 330px)
+        } else if (this.selectedVehicle.name === 'Laravel Lambo') {
+            hero.style.backgroundPosition = '-110px 0'; // Center position for high-res lambo (second frame scaled)
+            hero.style.backgroundSize = '330px 53px'; // Scale down the high-res sprite (795*3 frames = 2385, scaled to 330px)
         } else {
-            hero.style.backgroundPosition = '-110px 0'; // Center position for cars
+            hero.style.backgroundPosition = '-110px 0'; // Center position for other cars
+            hero.style.backgroundSize = 'auto';
         }
 
         // Reposition hero based on new dimensions
@@ -662,7 +680,11 @@ class FixedRacer {
         const hero = document.getElementById('hero');
         if (this.keys['ArrowRight']) {
             if (this.selectedVehicle.name === 'CSS Cycle') {
-                hero.style.backgroundPosition = `-90px 0`; // Right turn for bike (third frame)
+                hero.style.backgroundPosition = `-98px 0`; // Right turn for high-res bike (third frame scaled)
+            } else if (this.selectedVehicle.name === 'TypeScript Truck') {
+                hero.style.backgroundPosition = '-220px 0'; // Right turn for high-res truck (third frame scaled)
+            } else if (this.selectedVehicle.name === 'Laravel Lambo') {
+                hero.style.backgroundPosition = '-220px 0'; // Right turn for high-res lambo (third frame scaled)
             } else {
                 hero.style.backgroundPosition = '-220px 0'; // Right turn for cars
             }
@@ -672,7 +694,11 @@ class FixedRacer {
             this.playerX -= 0.007 * step * this.speed;
         } else {
             if (this.selectedVehicle.name === 'CSS Cycle') {
-                hero.style.backgroundPosition = '-45px 0'; // Center position for bike (second frame)
+                hero.style.backgroundPosition = '-49px 0'; // Center position for high-res bike (second frame scaled)
+            } else if (this.selectedVehicle.name === 'TypeScript Truck') {
+                hero.style.backgroundPosition = '-110px 0'; // Center position for high-res truck (second frame scaled)
+            } else if (this.selectedVehicle.name === 'Laravel Lambo') {
+                hero.style.backgroundPosition = '-110px 0'; // Center position for high-res lambo (second frame scaled)
             } else {
                 hero.style.backgroundPosition = '-110px 0'; // Center position for cars
             }
@@ -755,10 +781,10 @@ class FixedRacer {
                         this.speed = Math.min(HIT_SPEED, this.speed);
                         this.lives--;
                         this.lastCollisionTime = now; // Update last collision time
-                        
+
                         // Update lives display immediately
                         document.getElementById('lives-value').textContent = this.lives;
-                        
+
                         console.log('Car collision! Lives:', this.lives);
                         if (this.lives <= 0) {
                             this.gameOver();
@@ -913,7 +939,7 @@ class FixedRacer {
 
     async submitToLeaderboard(scoreData) {
         const statusElement = document.getElementById('leaderboard-status');
-        
+
         try {
             if (window.leaderboard) {
                 const raceData = {
@@ -930,7 +956,7 @@ class FixedRacer {
                 };
 
                 const success = await window.leaderboard.submitRace(raceData);
-                
+
                 if (success && statusElement) {
                     statusElement.textContent = '✓ Score submitted to leaderboard!';
                     statusElement.style.color = '#4cff00';
