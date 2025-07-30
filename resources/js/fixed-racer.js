@@ -669,7 +669,7 @@ class FixedRacer {
         instructions.innerHTML = '';
 
         const style = document.createElement('style');
-        style.textContent = '@keyframes blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }';
+        style.textContent = '@keyframes blink { 0%, 40% { opacity: 1; } 50% { opacity: 0.3; } 60%, 100% { opacity: 1; } }';
         document.head.appendChild(style);
 
         // Focus on name input initially
