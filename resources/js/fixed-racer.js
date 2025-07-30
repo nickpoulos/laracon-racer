@@ -1,0 +1,771 @@
+// Fixed Pseudo-3D Racing Game - Based on working index.html implementation
+
+// Game constants - matching working version
+const GAME_WIDTH = 1000;
+const GAME_HEIGHT = 650;
+const HALF_WIDTH = GAME_WIDTH / 2;
+const ROAD_WIDTH = 4000;
+const SEGMENT_LENGTH = 200;
+const CAMERA_DEPTH = 0.2;
+const CAMERA_HEIGHT = 1500;
+const N = 70; // Number of road segments - critical!
+
+// Speed constants
+const MAX_SPEED = 200;
+const ACCEL = 38;
+const BREAKING = -80;
+const DECEL = -40;
+const MAX_OFF_SPEED = 40;
+const OFF_DECEL = -70;
+const ENEMY_SPEED = 8;
+const HIT_SPEED = 20;
+
+// Lane positions
+const LANES = {
+    A: -2.3,
+    B: -0.5,
+    C: 1.2
+};
+
+// Colors
+const COLORS = {
+    TAR: ['#959298', '#9c9a9d'],
+    RUMBLE: ['#959298', '#f5f2f6'],
+    GRASS: ['#eedccd', '#e6d4c5']
+};
+
+// Game states
+const GAME_STATES = {
+    INTRO: 'intro',
+    VEHICLE_SELECT: 'vehicle',
+    DRIVER_SELECT: 'driver',
+    RACING: 'racing',
+    GAME_OVER: 'gameover'
+};
+
+// Vehicle data
+const VEHICLES = [
+    { name: 'LAMBO', speed: 220, accel: 40, img: '/img/lambo.jpg', sprite: '/img/hero.png' },
+    { name: 'TRUCK', speed: 180, accel: 35, img: '/img/truck.jpg', sprite: '/img/hero-truck.png' },
+    { name: 'BIKE', speed: 260, accel: 45, img: '/img/motorcycle.jpg', sprite: '/img/hero.png' }
+];
+
+const DRIVERS = [
+    { name: 'TAYLOR', img: '/img/taylor.jpg' }
+];
+
+// Helper functions
+Number.prototype.pad = function (numZeros, char = 0) {
+    let n = Math.abs(this);
+    let zeros = Math.max(0, numZeros - Math.floor(n).toString().length);
+    let zeroString = Math.pow(10, zeros).toString().substr(1).replace(0, char);
+    return zeroString + n;
+};
+
+Number.prototype.clamp = function (min, max) {
+    return Math.max(min, Math.min(this, max));
+};
+
+const accelerate = (v, accel, dt) => v + accel * dt;
+const isCollide = (x1, w1, x2, w2) => (x1 - x2) ** 2 <= (w2 + w1) ** 2;
+
+function getRand(min, max) {
+    return (Math.random() * (max - min) + min) | 0;
+}
+
+function randomProperty(obj) {
+    let keys = Object.keys(obj);
+    return obj[keys[(keys.length * Math.random()) << 0]];
+}
+
+// Proper drawQuad function from working version
+function drawQuad(element, layer, color, x1, y1, w1, x2, y2, w2) {
+    element.style.zIndex = layer;
+    element.style.background = color;
+    element.style.top = y2 + 'px';
+    element.style.left = x1 - w1 / 2 - w1 + 'px';
+    element.style.width = w1 * 3 + 'px';
+    element.style.height = y1 - y2 + 'px';
+
+    let leftOffset = w1 + x2 - x1 + Math.abs(w2 / 2 - w1 / 2);
+    element.style.clipPath = `polygon(${leftOffset}px 0, ${leftOffset + w2}px 0, 66.66% 100%, 33.33% 100%)`;
+}
+
+// Line class - matches working version
+class Line {
+    constructor() {
+        this.x = 0;
+        this.y = 0;
+        this.z = 0;
+
+        this.X = 0;
+        this.Y = 0;
+        this.W = 0;
+
+        this.curve = 0;
+        this.scale = 0;
+
+        this.elements = [];
+        this.special = null;
+    }
+
+    project(camX, camY, camZ) {
+        this.scale = CAMERA_DEPTH / (this.z - camZ);
+        this.X = (1 + this.scale * (this.x - camX)) * HALF_WIDTH;
+        this.Y = Math.ceil(((1 - this.scale * (this.y - camY)) * GAME_HEIGHT) / 2);
+        this.W = this.scale * ROAD_WIDTH * HALF_WIDTH;
+    }
+
+    clearSprites() {
+        for (let e of this.elements) e.style.background = 'transparent';
+    }
+
+    drawSprite(depth, layer, sprite, offset) {
+        let destX = this.X + this.scale * HALF_WIDTH * offset;
+        let destY = this.Y + 4;
+        let destW = (sprite.width * this.W) / 200;
+        let destH = (sprite.height * this.W) / 200;
+
+        destX += destW * offset;
+        destY += destH * -1;
+
+        let obj = layer instanceof Element ? layer : this.elements[layer + 6];
+        obj.style.background = `url('${sprite.src}') no-repeat`;
+        obj.style.backgroundSize = `${destW}px ${destH}px`;
+        obj.style.left = destX + 'px';
+        obj.style.top = destY + 'px';
+        obj.style.width = destW + 'px';
+        obj.style.height = destH + 'px';
+        obj.style.zIndex = depth;
+    }
+}
+
+// Car class - matches working version
+class Car {
+    constructor(pos, type, lane) {
+        this.pos = pos;
+        this.type = type;
+        this.lane = lane;
+
+        var element = document.createElement('div');
+        element.style.position = 'absolute';
+        document.getElementById('road').appendChild(element);
+        this.element = element;
+    }
+}
+
+// Main game class
+class FixedRacer {
+    constructor() {
+        this.gameState = GAME_STATES.INTRO;
+        this.selectedVehicle = null;
+        this.selectedDriver = null;
+        this.currentVehicleIndex = 0;
+        this.currentDriverIndex = 0;
+
+        // Game variables - match working version naming
+        this.inGame = false;
+        this.start = 0;
+        this.playerX = 0;
+        this.speed = 0;
+        this.scoreVal = 0;
+        this.pos = 0;
+        this.cloudOffset = 0;
+        this.sectionProg = 0;
+        this.mapIndex = 0;
+        this.countDown = 0;
+        this.lives = 3;
+        this.lastCollisionTime = 0; // Track last collision time
+        this.collisionCooldown = 1000; // 1 second cooldown between collisions
+        
+        // Vehicle stats
+        this.maxSpeed = MAX_SPEED; // Default to original max speed
+        this.vehicleAccel = ACCEL;  // Default to original accel
+
+        // Road segments
+        this.lines = [];
+        this.cars = [];
+        this.map = [];
+
+        // Input
+        this.keys = {};
+
+        this.init();
+    }
+
+    init() {
+        this.setupDOM();
+        this.setupInput();
+        this.generateMap();
+        this.createRoad();
+        this.spawnCars();
+        this.showIntroScreen();
+        this.startGameLoop();
+    }
+
+    setupDOM() {
+        const gameContainer = document.getElementById('game-container');
+        gameContainer.innerHTML = `
+            <div id="game" style="width: ${GAME_WIDTH}px; height: ${GAME_HEIGHT}px; position: relative; margin: 0 auto; overflow: hidden; background: #222;">
+                <div id="road" style="position: absolute; width: 100%; height: 100%;">
+                    <div id="cloud" style="background-size: auto 100%; width: 100%; height: 57%; position: absolute;"></div>
+                    <div id="hero" style="position: absolute; background: url('/img/hero.png') no-repeat; background-position: -110px 0; width: 110px; height: 56px; z-index: 2000; display: none; transform: scale(1.75);"></div>
+                </div>
+                <div id="hud" style="position: absolute; width: 100%; height: 100%; z-index: 1000; display: none;">
+                    <div id="time" style="position: absolute; left: 13%; transform: translate(-50%, 25px); color: #f4f430; font-family: 'Press Start 2P', monospace; font-size: 12px; text-shadow: -2px 0 black, 0 2px black, 2px 0 black, 0 -2px black; letter-spacing: 1px;">0</div>
+                    <div id="score" style="position: absolute; left: 45%; transform: translate(-50%, 25px); color: #ffffff; font-family: 'Press Start 2P', monospace; font-size: 12px; text-shadow: -2px 0 black, 0 2px black, 2px 0 black, 0 -2px black; letter-spacing: 1px;">0</div>
+                    <div id="lap" style="position: absolute; left: 88%; width: 45%; transform: translate(-50%, 25px); color: #0082df; font-family: 'Press Start 2P', monospace; font-size: 12px; text-shadow: -2px 0 black, 0 2px black, 2px 0 black, 0 -2px black; letter-spacing: 1px;">0'00"000</div>
+                    <div id="tacho" style="position: absolute; text-align: right; width: 23%; bottom: 5%; z-index: 2000; color: #e62e13; text-shadow: -2px 0 black, 0 2px black, 2px 0 black, 0 -2px black; letter-spacing: 1px; font-size: 18px;">0</div>
+                    <!-- New HUD elements -->
+                    <div id="distance" style="position: absolute; left: 10%; top: 60px; color: #4cff00; font-family: 'Press Start 2P', monospace; font-size: 10px; text-shadow: -1px 0 black, 0 1px black, 1px 0 black, 0 -1px black;">DIST: 0m</div>
+                    <div id="lives" style="position: absolute; left: 10%; top: 90px; color: #ff0000; font-family: 'Press Start 2P', monospace; font-size: 10px; text-shadow: -1px 0 black, 0 1px black, 1px 0 black, 0 -1px black;">LIVES: 3</div>
+                </div>
+                <div id="menu" style="position: absolute; width: 100%; height: 100%; background: rgba(0,0,0,0.8); color: white; z-index: 3000; display: flex; flex-direction: column; justify-content: center; align-items: center; font-family: 'Press Start 2P', monospace; text-align: center;">
+                    <h1 id="menu-title" style="font-size: 2.5em; margin-bottom: 20px; color: #ff6600; text-align: center;">LARACON RACER</h1>
+                    <div id="menu-content"></div>
+                    <div id="menu-instructions" style="margin-top: 30px; font-size: 10px; color: #ccc; text-align: center;"></div>
+                </div>
+            </div>
+        `;
+
+        // Position hero car at bottom center
+        const hero = document.getElementById('hero');
+        hero.style.top = `${GAME_HEIGHT - 100}px`;
+        hero.style.left = `${HALF_WIDTH - 68}px`;
+
+        // Set cloud background
+        const cloud = document.getElementById('cloud');
+        cloud.style.backgroundImage = 'url(/img/cloud.jpg)';
+    }
+
+    setupInput() {
+        window.addEventListener('keydown', (e) => {
+            this.keys[e.code] = true;
+            this.handleKeyPress(e.code);
+            e.preventDefault();
+        });
+
+        window.addEventListener('keyup', (e) => {
+            this.keys[e.code] = false;
+        });
+    }
+
+    handleKeyPress(keyCode) {
+        switch (this.gameState) {
+            case GAME_STATES.INTRO:
+                if (keyCode === 'Space') {
+                    this.gameState = GAME_STATES.VEHICLE_SELECT;
+                    this.showVehicleSelect();
+                }
+                break;
+
+            case GAME_STATES.VEHICLE_SELECT:
+                if (keyCode === 'ArrowLeft') {
+                    this.currentVehicleIndex = (this.currentVehicleIndex - 1 + VEHICLES.length) % VEHICLES.length;
+                    this.showVehicleSelect();
+                } else if (keyCode === 'ArrowRight') {
+                    this.currentVehicleIndex = (this.currentVehicleIndex + 1) % VEHICLES.length;
+                    this.showVehicleSelect();
+                } else if (keyCode === 'Space') {
+                    this.selectedVehicle = VEHICLES[this.currentVehicleIndex];
+                    this.gameState = GAME_STATES.DRIVER_SELECT;
+                    this.showDriverSelect();
+                }
+                break;
+
+            case GAME_STATES.DRIVER_SELECT:
+                if (keyCode === 'Space') {
+                    this.selectedDriver = DRIVERS[0];
+                    this.gameState = GAME_STATES.RACING;
+                    this.startRace();
+                }
+                break;
+
+            case GAME_STATES.GAME_OVER:
+                if (keyCode === 'Space') {
+                    this.resetGame();
+                    this.gameState = GAME_STATES.INTRO;
+                    this.showIntroScreen();
+                }
+                break;
+        }
+    }
+
+    showIntroScreen() {
+        const menu = document.getElementById('menu');
+        const content = document.getElementById('menu-content');
+        const instructions = document.getElementById('menu-instructions');
+
+        menu.style.display = 'flex';
+        content.innerHTML = '<p style="font-size: 1.2em; text-align: center; animation: blink 1s infinite;">PRESS SPACE TO START</p>';
+        instructions.innerHTML = '<div style="font-size: 12px; text-align: center;"><span style="color: #ff6600;">← →</span> Navigate/Steer • <span style="color: #ff6600;">↑ ↓</span> Accelerate/Brake • <span style="color: #ff6600;">SPACE</span> Select/Start</div>';
+
+        const style = document.createElement('style');
+        style.textContent = '@keyframes blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }';
+        document.head.appendChild(style);
+    }
+
+    showVehicleSelect() {
+        const content = document.getElementById('menu-content');
+        content.innerHTML = `
+            <h2 style="margin-bottom: 30px; font-size: 1.5em; text-align: center;">SELECT YOUR VEHICLE</h2>
+            <div style="display: flex; gap: 40px; justify-content: center;">
+                ${VEHICLES.map((vehicle, index) => `
+                    <div style="text-align: center; border: ${index === this.currentVehicleIndex ? '4px solid #ff6600' : '2px solid #666'}; padding: 20px; border-radius: 10px; background: ${index === this.currentVehicleIndex ? 'rgba(255, 102, 0, 0.2)' : 'transparent'};">
+                        <div style="width: 120px; height: 80px; background: url('${vehicle.img}') center/cover; margin-bottom: 10px;"></div>
+                        <h3 style="font-size: 1.2em; color: ${index === this.currentVehicleIndex ? '#ff6600' : 'white'}; text-align: center;">${vehicle.name}</h3>
+                        <p style="font-size: 0.9em; text-align: center;">Speed: ${vehicle.speed}</p>
+                        <p style="font-size: 0.9em; text-align: center;">Accel: ${vehicle.accel}</p>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+
+        document.getElementById('menu-instructions').innerHTML = '<div style="font-size: 12px; text-align: center;"><span style="color: #ff6600;">← →</span> Navigate • <span style="color: #ff6600;">SPACE</span> Select</div>';
+    }
+
+    showDriverSelect() {
+        const content = document.getElementById('menu-content');
+        content.innerHTML = `
+            <h2 style="margin-bottom: 30px; font-size: 1.5em; text-align: center;">SELECT YOUR DRIVER</h2>
+            <div style="text-align: center;">
+                <div style="border: 4px solid #ff6600; padding: 20px; border-radius: 10px; display: inline-block; background: rgba(255, 102, 0, 0.2);">
+                    <div style="width: 120px; height: 120px; background: url('${DRIVERS[0].img}') center/cover; margin-bottom: 10px;"></div>
+                    <h3 style="font-size: 1.2em; color: #ff6600; text-align: center;">${DRIVERS[0].name}</h3>
+                </div>
+            </div>
+        `;
+
+        document.getElementById('menu-instructions').innerHTML = '<div style="font-size: 12px; text-align: center;"><span style="color: #ff6600;">SPACE</span> Select</div>';
+    }
+
+    startRace() {
+        // Hide menu
+        document.getElementById('menu').style.display = 'none';
+
+        // Reset game state
+        this.resetGame();
+        
+        // Apply vehicle-specific stats
+        this.maxSpeed = this.selectedVehicle.speed;
+        this.vehicleAccel = this.selectedVehicle.accel;
+        
+        // Truck gets an extra life
+        if (this.selectedVehicle.name === 'TRUCK') {
+            this.lives = 4; // 3 base lives + 1 extra for truck
+        } else {
+            this.lives = 3; // Base lives for other vehicles
+        }
+        
+        // Update lives display
+        document.getElementById('lives').textContent = `LIVES: ${this.lives}`;
+
+        // Regenerate the map to ensure we start from the beginning
+        this.generateMap();
+
+        this.inGame = false; // Keep game paused during countdown
+        this.start = Date.now();
+
+        // Show player car, HUD, and ensure road is fully opaque
+        const hero = document.getElementById('hero');
+        hero.style.display = 'block';
+        // Set the appropriate sprite based on selected vehicle
+        hero.style.backgroundImage = `url('${this.selectedVehicle.sprite}')`;
+        document.getElementById('hud').style.display = 'block';
+        const road = document.getElementById('road');
+        road.style.opacity = '1';
+
+        // Reset HUD display values
+        document.getElementById('time').textContent = (this.countDown | 0).pad(3);
+        document.getElementById('score').textContent = (this.scoreVal | 0).pad(8);
+        document.getElementById('tacho').textContent = this.speed | 0;
+        document.getElementById('distance').textContent = `DIST: ${Math.floor(this.scoreVal)}m`;
+        document.getElementById('lives').textContent = `LIVES: ${this.lives}`;
+
+        let cT = new Date(Date.now() - this.start);
+        document.getElementById('lap').textContent = `${cT.getMinutes()}'${cT.getSeconds().pad(2)}"${cT.getMilliseconds().pad(3)}`;
+
+        // Force a reflow to ensure styles are applied
+        road.offsetHeight;
+
+        // Start countdown
+        this.startCountdown();
+    }
+
+    async startCountdown() {
+        const hud = document.getElementById('hud');
+        const countdownElement = document.createElement('div');
+        countdownElement.id = 'countdown';
+        countdownElement.style.cssText = `
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 80px;
+            font-family: 'Press Start 2P', monospace;
+            color: #ff0000;
+            text-shadow: 0 0 10px #000;
+            z-index: 5000;
+        `;
+        hud.appendChild(countdownElement);
+
+        // Countdown sequence
+        for (let i = 3; i > 0; i--) {
+            countdownElement.textContent = i;
+            await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+
+        // Remove countdown element
+        countdownElement.remove();
+
+        // Start the game
+        this.inGame = true;
+    }
+
+    generateMap() {
+        this.map = [];
+        const mapLength = 15000;
+
+        for (var i = 0; i < mapLength; i += getRand(0, 50)) {
+            let section = {
+                from: i,
+                to: (i = i + getRand(300, 600))
+            };
+
+            let randHeight = getRand(-5, 5);
+            let randCurve = getRand(5, 30) * (Math.random() >= 0.5 ? 1 : -1);
+            let randInterval = getRand(20, 40);
+
+            if (Math.random() > 0.9) {
+                Object.assign(section, {
+                    curve: (_) => randCurve,
+                    height: (_) => randHeight
+                });
+            } else if (Math.random() > 0.8) {
+                Object.assign(section, {
+                    curve: (_) => 0,
+                    height: (i) => Math.sin(i / randInterval) * 1000
+                });
+            } else if (Math.random() > 0.8) {
+                Object.assign(section, {
+                    curve: (_) => 0,
+                    height: (_) => randHeight
+                });
+            } else {
+                Object.assign(section, {
+                    curve: (_) => randCurve,
+                    height: (_) => 0
+                });
+            }
+
+            this.map.push(section);
+        }
+
+        this.map.push({
+            from: i,
+            to: i + N,
+            curve: (_) => 0,
+            height: (_) => 0,
+            special: { src: '/img/finish.png', width: 339, height: 180, offset: -0.5 }
+        });
+        this.map.push({ from: Infinity });
+    }
+
+    createRoad() {
+        const roadContainer = document.getElementById('road');
+
+        for (let i = 0; i < N; i++) {
+            const line = new Line();
+            line.z = i * SEGMENT_LENGTH + 270;
+
+            // Create 8 DOM elements for each line (6 road + 2 sprites)
+            for (let j = 0; j < 6 + 2; j++) {
+                const element = document.createElement('div');
+                element.style.position = 'absolute';
+                roadContainer.appendChild(element);
+                line.elements.push(element);
+            }
+
+            this.lines.push(line);
+        }
+    }
+
+    spawnCars() {
+        this.cars = [];
+        const carType = { src: '/img/car04.png', width: 50, height: 36 };
+
+        // Position cars well ahead of the player to prevent any immediate collisions
+        // Using positions that ensure they start well ahead and in different lanes
+        this.cars.push(new Car(30, carType, LANES.A));  // Far ahead in left lane
+        this.cars.push(new Car(35, carType, LANES.C));  // Far ahead in right lane
+        this.cars.push(new Car(40, carType, LANES.B));  // Far ahead in center lane
+        this.cars.push(new Car(50, carType, LANES.A));  // Even further in left lane
+        this.cars.push(new Car(55, carType, LANES.C));  // Even further in right lane
+        this.cars.push(new Car(65, carType, LANES.B));  // Even further in center lane
+        this.cars.push(new Car(70, carType, LANES.A));  // Furthest in left lane
+    }
+
+    startGameLoop() {
+        let then = Date.now();
+        const targetFrameRate = 1000 / 25;
+
+        const gameLoop = () => {
+            requestAnimationFrame(gameLoop);
+
+            let now = Date.now();
+            let delta = now - then;
+
+            if (delta > targetFrameRate) {
+                then = now - (delta % targetFrameRate);
+                if (this.gameState === GAME_STATES.RACING) {
+                    this.update(delta / 1000);
+                }
+            }
+        };
+
+        requestAnimationFrame(gameLoop);
+    }
+
+    update(step) {
+        // Match the working version exactly
+        this.pos += this.speed;
+        while (this.pos >= N * SEGMENT_LENGTH) this.pos -= N * SEGMENT_LENGTH;
+        while (this.pos < 0) this.pos += N * SEGMENT_LENGTH;
+
+        var startPos = (this.pos / SEGMENT_LENGTH) | 0;
+        let endPos = (startPos + N - 1) % N;
+
+        this.scoreVal += this.speed * step;
+        this.countDown -= step;
+
+        // Player movement - match working version
+        this.playerX -= (this.lines[startPos].curve / 5000) * step * this.speed;
+
+        const hero = document.getElementById('hero');
+        if (this.keys['ArrowRight']) {
+            hero.style.backgroundPosition = '-220px 0';
+            this.playerX += 0.007 * step * this.speed;
+        } else if (this.keys['ArrowLeft']) {
+            hero.style.backgroundPosition = '0 0';
+            this.playerX -= 0.007 * step * this.speed;
+        } else {
+            hero.style.backgroundPosition = '-110px 0';
+        }
+
+        this.playerX = this.playerX.clamp(-3, 3);
+
+        // Speed control - using vehicle-specific stats
+        if (this.inGame && this.keys['ArrowUp']) {
+            this.speed = accelerate(this.speed, this.vehicleAccel, step); // Use vehicle accel
+        } else if (this.keys['ArrowDown']) {
+            this.speed = accelerate(this.speed, BREAKING, step);
+        } else {
+            this.speed = accelerate(this.speed, DECEL, step);
+        }
+
+        if (Math.abs(this.playerX) > 0.55 && this.speed >= MAX_OFF_SPEED) {
+            this.speed = accelerate(this.speed, OFF_DECEL, step);
+        }
+
+        this.speed = this.speed.clamp(0, this.maxSpeed); // Use vehicle max speed
+
+        // Update map
+        let current = this.map[this.mapIndex];
+        let use = current.from < this.scoreVal && current.to > this.scoreVal;
+        if (use) this.sectionProg += this.speed * step;
+        this.lines[endPos].curve = use ? current.curve(this.sectionProg) : 0;
+        this.lines[endPos].y = use ? current.height(this.sectionProg) : 0;
+        this.lines[endPos].special = null;
+
+        if (current.to <= this.scoreVal) {
+            this.mapIndex++;
+            this.sectionProg = 0;
+            this.lines[endPos].special = this.map[this.mapIndex].special;
+        }
+
+        // Game over conditions
+        if (!this.inGame) {
+            this.speed = accelerate(this.speed, BREAKING, step);
+            this.speed = this.speed.clamp(0, MAX_SPEED);
+        } else if (this.countDown <= 0 || this.lines[startPos].special) {
+            this.gameOver();
+        } else {
+            // Update UI
+            document.getElementById('time').textContent = (this.countDown | 0).pad(3);
+            document.getElementById('score').textContent = (this.scoreVal | 0).pad(8);
+            document.getElementById('tacho').textContent = this.speed | 0;
+
+            // Update new HUD elements
+            document.getElementById('distance').textContent = `DIST: ${Math.floor(this.scoreVal)}m`;
+            document.getElementById('lives').textContent = `LIVES: ${this.lives}`;
+
+            let cT = new Date(Date.now() - this.start);
+            document.getElementById('lap').textContent = `${cT.getMinutes()}'${cT.getSeconds().pad(2)}"${cT.getMilliseconds().pad(3)}`;
+        }
+
+        // Update cloud background
+        const cloud = document.getElementById('cloud');
+        this.cloudOffset -= this.lines[startPos].curve * step * this.speed * 0.13;
+        cloud.style.backgroundPosition = `${this.cloudOffset | 0}px 0`;
+
+        // Update cars - match working version
+        for (let car of this.cars) {
+            car.pos = (car.pos + ENEMY_SPEED * step) % N;
+
+            // Respawn
+            if ((car.pos | 0) === endPos) {
+                if (this.speed < 30) car.pos = startPos;
+                else car.pos = endPos - 2;
+                car.lane = randomProperty(LANES);
+            }
+
+            // Collision - only check if game is actually running (not during countdown)
+            if (this.inGame) {
+                const offsetRatio = 5;
+                if ((car.pos | 0) === startPos &&
+                    isCollide(this.playerX * offsetRatio + LANES.B, 0.5, car.lane, 0.5)) {
+                    // Check if enough time has passed since last collision
+                    const now = Date.now();
+                    if (now - this.lastCollisionTime > this.collisionCooldown) {
+                        this.speed = Math.min(HIT_SPEED, this.speed);
+                        this.lives--;
+                        this.lastCollisionTime = now; // Update last collision time
+                        console.log('Car collision! Lives:', this.lives);
+                        if (this.lives <= 0) {
+                            this.gameOver();
+                        }
+                    }
+                }
+            }
+        }
+
+        this.render(startPos);
+    }
+
+    render(startPos) {
+        // Draw road - match working version exactly
+        let maxy = GAME_HEIGHT;
+        let camH = CAMERA_HEIGHT + this.lines[startPos].y;
+        let x = 0;
+        let dx = 0;
+
+        for (let n = startPos; n < startPos + N; n++) {
+            let l = this.lines[n % N];
+            let level = N * 2 - n;
+
+            // Update view - critical projection math
+            l.project(
+                this.playerX * ROAD_WIDTH - x,
+                camH,
+                startPos * SEGMENT_LENGTH - (n >= N ? N * SEGMENT_LENGTH : 0)
+            );
+            x += dx;
+            dx += l.curve;
+
+            // Clear sprites
+            l.clearSprites();
+
+            // Draw sprites - trees and cars
+            const treeSprite = { src: '/img/tree.png', width: 132, height: 192 };
+            if (n % 10 === 0) l.drawSprite(level, 0, treeSprite, -2);
+            if ((n + 5) % 10 === 0) l.drawSprite(level, 0, treeSprite, 1.3);
+
+            if (l.special) l.drawSprite(level, 0, l.special, l.special.offset || 0);
+
+            for (let car of this.cars) {
+                if ((car.pos | 0) === n % N) {
+                    l.drawSprite(level, car.element, car.type, car.lane);
+                }
+            }
+
+            // Draw road segments
+            if (l.Y >= maxy) continue;
+            maxy = l.Y;
+
+            let even = ((n / 2) | 0) % 2;
+            let grass = COLORS.GRASS[even * 1];
+            let rumble = COLORS.RUMBLE[even * 1];
+            let tar = COLORS.TAR[even * 1];
+
+            let p = this.lines[(n - 1) % N];
+
+            // Draw grass
+            drawQuad(l.elements[0], level, grass,
+                GAME_WIDTH / 4, p.Y, HALF_WIDTH + 2,
+                GAME_WIDTH / 4, l.Y, HALF_WIDTH);
+            drawQuad(l.elements[1], level, grass,
+                (GAME_WIDTH / 4) * 3, p.Y, HALF_WIDTH + 2,
+                (GAME_WIDTH / 4) * 3, l.Y, HALF_WIDTH);
+
+            // Draw road
+            drawQuad(l.elements[2], level, rumble,
+                p.X, p.Y, p.W * 1.15,
+                l.X, l.Y, l.W * 1.15);
+            drawQuad(l.elements[3], level, tar,
+                p.X, p.Y, p.W,
+                l.X, l.Y, l.W);
+
+            // Draw center line
+            if (!even) {
+                drawQuad(l.elements[4], level, COLORS.RUMBLE[1],
+                    p.X, p.Y, p.W * 0.4,
+                    l.X, l.Y, l.W * 0.4);
+                drawQuad(l.elements[5], level, tar,
+                    p.X, p.Y, p.W * 0.35,
+                    l.X, l.Y, l.W * 0.35);
+            }
+        }
+
+        // Update hero car position
+        const hero = document.getElementById('hero');
+        hero.style.left = `${HALF_WIDTH - 68 + this.playerX * 125}px`;
+    }
+
+    gameOver() {
+        this.inGame = false;
+        this.gameState = GAME_STATES.GAME_OVER;
+
+        document.getElementById('menu').style.display = 'flex';
+        document.getElementById('menu-content').innerHTML = `
+            <h2 style="color: #ff0000; margin-bottom: 20px; font-size: 1.8em; text-align: center;">GAME OVER</h2>
+            <div style="text-align: center;">
+                <p style="font-size: 1em; text-align: center;">Final Score: ${Math.floor(this.scoreVal)}</p>
+                <p style="font-size: 1em; text-align: center;">Lives: ${this.lives}</p>
+                <p style="margin-top: 20px; animation: blink 1s infinite; text-align: center; font-size: 1.1em;">PRESS SPACE TO RESTART</p>
+            </div>
+        `;
+        document.getElementById('menu-instructions').innerHTML = '';
+    }
+
+    resetGame() {
+        this.inGame = false;
+        this.start = Date.now();
+        this.countDown = this.map[this.map.length - 2].to / 130 + 10;
+        this.playerX = 0;
+        this.speed = 0;
+        this.scoreVal = 0;
+        this.pos = 0;
+        this.cloudOffset = 0;
+        this.sectionProg = 0;
+        this.mapIndex = 0;
+        this.lives = 3;
+        this.lastCollisionTime = 0; // Reset collision time
+        
+        // Reset vehicle stats to defaults
+        this.maxSpeed = MAX_SPEED;
+        this.vehicleAccel = ACCEL;
+
+        for (let line of this.lines) {
+            line.curve = line.y = 0;
+        }
+
+        document.getElementById('road').style.opacity = '0.4';
+        document.getElementById('hud').style.display = 'none';
+        document.getElementById('hero').style.display = 'none';
+    }
+}
+
+// Initialize the game
+export function initFixedRacer() {
+    new FixedRacer();
+}
