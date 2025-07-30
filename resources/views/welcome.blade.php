@@ -72,7 +72,7 @@
         <div id="controls">
             <span><span>SPACE</span>start/restart</span>
             <span><span>1/2/3</span>select</span>
-            <span><span>←→</span>steer</span>
+            <span><span style="font-size: 25px;">←→</span>steer</span>
             <span><span>↑↓</span>accelerate/brake</span>
         </div>
     </body>

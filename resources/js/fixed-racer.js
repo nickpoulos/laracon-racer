@@ -45,9 +45,9 @@ const GAME_STATES = {
 
 // Vehicle data
 const VEHICLES = [
-    { name: 'LAMBO', speed: 220, accel: 40, img: '/img/lambo.jpg', sprite: '/img/hero.png' },
-    { name: 'TRUCK', speed: 180, accel: 35, img: '/img/truck.jpg', sprite: '/img/hero-truck.png' },
-    { name: 'BIKE', speed: 260, accel: 45, img: '/img/motorcycle.jpg', sprite: '/img/hero.png' }
+    { name: 'LAMBO', speed: 220, accel: 40, img: '/img/lambo.jpg', sprite: '/img/hero.png', width: 110, height: 56 },
+    { name: 'TRUCK', speed: 180, accel: 35, img: '/img/truck.jpg', sprite: '/img/hero-truck.png', width: 110, height: 56 },
+    { name: 'BIKE', speed: 260, accel: 45, img: '/img/motorcycle.jpg', sprite: '/img/hero-cycle.png', width: 49, height: 55 }
 ];
 
 const DRIVERS = [
@@ -85,7 +85,7 @@ function drawQuad(element, layer, color, x1, y1, w1, x2, y2, w2) {
     element.style.top = y2 + 'px';
     element.style.left = x1 - w1 / 2 - w1 + 'px';
     element.style.width = w1 * 3 + 'px';
-    element.style.height = y1 - y2 + 'px';
+    element.style.height = y1 - y2 + 1 + 'px';
 
     let leftOffset = w1 + x2 - x1 + Math.abs(w2 / 2 - w1 / 2);
     element.style.clipPath = `polygon(${leftOffset}px 0, ${leftOffset + w2}px 0, 66.66% 100%, 33.33% 100%)`;
@@ -112,7 +112,7 @@ class Line {
     project(camX, camY, camZ) {
         this.scale = CAMERA_DEPTH / (this.z - camZ);
         this.X = (1 + this.scale * (this.x - camX)) * HALF_WIDTH;
-        this.Y = Math.ceil(((1 - this.scale * (this.y - camY)) * GAME_HEIGHT) / 2);
+        this.Y = Math.round(((1 - this.scale * (this.y - camY)) * GAME_HEIGHT) / 2);
         this.W = this.scale * ROAD_WIDTH * HALF_WIDTH;
     }
 
@@ -177,7 +177,7 @@ class FixedRacer {
         this.lives = 3;
         this.lastCollisionTime = 0; // Track last collision time
         this.collisionCooldown = 1000; // 1 second cooldown between collisions
-        
+
         // Vehicle stats
         this.maxSpeed = MAX_SPEED; // Default to original max speed
         this.vehicleAccel = ACCEL;  // Default to original accel
@@ -208,17 +208,34 @@ class FixedRacer {
         gameContainer.innerHTML = `
             <div id="game" style="width: ${GAME_WIDTH}px; height: ${GAME_HEIGHT}px; position: relative; margin: 0 auto; overflow: hidden; background: #222;">
                 <div id="road" style="position: absolute; width: 100%; height: 100%;">
-                    <div id="cloud" style="background-size: auto 100%; width: 100%; height: 57%; position: absolute;"></div>
+                    <div id="cloud" style="background-size: auto 100%; width: 100%; height: 100%; position: absolute;"></div>
                     <div id="hero" style="position: absolute; background: url('/img/hero.png') no-repeat; background-position: -110px 0; width: 110px; height: 56px; z-index: 2000; display: none; transform: scale(1.75);"></div>
                 </div>
                 <div id="hud" style="position: absolute; width: 100%; height: 100%; z-index: 1000; display: none;">
-                    <div id="time" style="position: absolute; left: 13%; transform: translate(-50%, 25px); color: #f4f430; font-family: 'Press Start 2P', monospace; font-size: 12px; text-shadow: -2px 0 black, 0 2px black, 2px 0 black, 0 -2px black; letter-spacing: 1px;">0</div>
-                    <div id="score" style="position: absolute; left: 45%; transform: translate(-50%, 25px); color: #ffffff; font-family: 'Press Start 2P', monospace; font-size: 12px; text-shadow: -2px 0 black, 0 2px black, 2px 0 black, 0 -2px black; letter-spacing: 1px;">0</div>
-                    <div id="lap" style="position: absolute; left: 88%; width: 45%; transform: translate(-50%, 25px); color: #0082df; font-family: 'Press Start 2P', monospace; font-size: 12px; text-shadow: -2px 0 black, 0 2px black, 2px 0 black, 0 -2px black; letter-spacing: 1px;">0'00"000</div>
-                    <div id="tacho" style="position: absolute; text-align: right; width: 23%; bottom: 5%; z-index: 2000; color: #e62e13; text-shadow: -2px 0 black, 0 2px black, 2px 0 black, 0 -2px black; letter-spacing: 1px; font-size: 18px;">0</div>
-                    <!-- New HUD elements -->
-                    <div id="distance" style="position: absolute; left: 10%; top: 60px; color: #4cff00; font-family: 'Press Start 2P', monospace; font-size: 10px; text-shadow: -1px 0 black, 0 1px black, 1px 0 black, 0 -1px black;">DIST: 0m</div>
-                    <div id="lives" style="position: absolute; left: 10%; top: 90px; color: #ff0000; font-family: 'Press Start 2P', monospace; font-size: 10px; text-shadow: -1px 0 black, 0 1px black, 1px 0 black, 0 -1px black;">LIVES: 3</div>
+                    <div style="position: absolute; top: 25px; left: 50%; transform: translateX(-50%); display: flex; gap: 40px; align-items: center;">
+                        <!-- Score -->
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="background: white; color: #ffffff; border: 2px solid #ffffff; border-radius: 15px; padding: 4px 12px; font-family: 'Press Start 2P', monospace; font-size: 10px; background: white; color: black;">SCORE</span>
+                            <span id="score" style="color: #ffffff; font-family: 'Press Start 2P', monospace; font-size: 16px; text-shadow: -2px 0 black, 0 2px black, 2px 0 black, 0 -2px black; letter-spacing: 1px;">0</span>
+                        </div>
+                        <!-- Distance -->
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="background: white; color: #4cff00; border: 2px solid #4cff00; border-radius: 15px; padding: 4px 12px; font-family: 'Press Start 2P', monospace; font-size: 10px;">DIST</span>
+                            <span id="distance-value" style="color: #4cff00; font-family: 'Press Start 2P', monospace; font-size: 16px; text-shadow: -1px 0 black, 0 1px black, 1px 0 black, 0 -1px black;">0m</span>
+                        </div>
+                        <!-- Lives -->
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="background: white; color: #ff0000; border: 2px solid #ff0000; border-radius: 15px; padding: 4px 12px; font-family: 'Press Start 2P', monospace; font-size: 10px;">LIVES</span>
+                            <span id="lives-value" style="color: #ff0000; font-family: 'Press Start 2P', monospace; font-size: 16px; text-shadow: -1px 0 black, 0 1px black, 1px 0 black, 0 -1px black;">3</span>
+                        </div>
+                        <!-- Lap Time -->
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="background: white; color: #0082df; border: 2px solid #0082df; border-radius: 15px; padding: 4px 12px; font-family: 'Press Start 2P', monospace; font-size: 10px;">TIME</span>
+                            <span id="lap" style="color: #0082df; font-family: 'Press Start 2P', monospace; font-size: 16px; text-shadow: -2px 0 black, 0 2px black, 2px 0 black, 0 -2px black; letter-spacing: 1px;">0'00"000</span>
+                        </div>
+                    </div>
+                    <!-- Speed tacho in bottom right -->
+                    <div id="tacho" style="position: absolute; text-align: right; width: 23%; bottom: 5%; z-index: 2000; color: #e62e13; text-shadow: -2px 0 black, 0 2px black, 2px 0 black, 0 -2px black; letter-spacing: 1px; font-size: 24px;">0</div>
                 </div>
                 <div id="menu" style="position: absolute; width: 100%; height: 100%; background: rgba(0,0,0,0.8); color: white; z-index: 3000; display: flex; flex-direction: column; justify-content: center; align-items: center; font-family: 'Press Start 2P', monospace; text-align: center;">
                     <h1 id="menu-title" style="font-size: 2.5em; margin-bottom: 20px; color: #ff6600; text-align: center;">LARACON RACER</h1>
@@ -228,10 +245,7 @@ class FixedRacer {
             </div>
         `;
 
-        // Position hero car at bottom center
-        const hero = document.getElementById('hero');
-        hero.style.top = `${GAME_HEIGHT - 100}px`;
-        hero.style.left = `${HALF_WIDTH - 68}px`;
+        // Hero positioning will be set dynamically when vehicle is selected
 
         // Set cloud background
         const cloud = document.getElementById('cloud');
@@ -298,7 +312,7 @@ class FixedRacer {
 
         menu.style.display = 'flex';
         content.innerHTML = '<p style="font-size: 1.2em; text-align: center; animation: blink 1s infinite;">PRESS SPACE TO START</p>';
-        instructions.innerHTML = '<div style="font-size: 12px; text-align: center;"><span style="color: #ff6600;">← →</span> Navigate/Steer • <span style="color: #ff6600;">↑ ↓</span> Accelerate/Brake • <span style="color: #ff6600;">SPACE</span> Select/Start</div>';
+        instructions.innerHTML = '<div style="font-size: 12px; text-align: center;"><span style="color: #ff6600; font-size: 28px; letter-spacing: -10px; margin-right: 10px; position: relative; top: 2px;">← →</span> Navigate/Steer • <span style="color: #ff6600;">↑ ↓</span> Accelerate/Brake • <span style="color: #ff6600;">SPACE</span> Select/Start</div>';
 
         const style = document.createElement('style');
         style.textContent = '@keyframes blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }';
@@ -321,7 +335,7 @@ class FixedRacer {
             </div>
         `;
 
-        document.getElementById('menu-instructions').innerHTML = '<div style="font-size: 12px; text-align: center;"><span style="color: #ff6600;">← →</span> Navigate • <span style="color: #ff6600;">SPACE</span> Select</div>';
+        document.getElementById('menu-instructions').innerHTML = '<div style="font-size: 12px; text-align: center;"><span style="color: #ff6600;font-size: 28px; letter-spacing: -10px; margin-right: 10px; position: relative; top: 2px;">← →</span> Navigate • <span style="color: #ff6600;">SPACE</span> Select</div>';
     }
 
     showDriverSelect() {
@@ -345,20 +359,20 @@ class FixedRacer {
 
         // Reset game state
         this.resetGame();
-        
+
         // Apply vehicle-specific stats
         this.maxSpeed = this.selectedVehicle.speed;
         this.vehicleAccel = this.selectedVehicle.accel;
-        
+
         // Truck gets an extra life
         if (this.selectedVehicle.name === 'TRUCK') {
             this.lives = 4; // 3 base lives + 1 extra for truck
         } else {
             this.lives = 3; // Base lives for other vehicles
         }
-        
+
         // Update lives display
-        document.getElementById('lives').textContent = `LIVES: ${this.lives}`;
+        document.getElementById('lives-value').textContent = this.lives;
 
         // Regenerate the map to ensure we start from the beginning
         this.generateMap();
@@ -369,18 +383,31 @@ class FixedRacer {
         // Show player car, HUD, and ensure road is fully opaque
         const hero = document.getElementById('hero');
         hero.style.display = 'block';
-        // Set the appropriate sprite based on selected vehicle
+        // Set the appropriate sprite and dimensions based on selected vehicle
         hero.style.backgroundImage = `url('${this.selectedVehicle.sprite}')`;
+        hero.style.width = `${this.selectedVehicle.width}px`;
+        hero.style.height = `${this.selectedVehicle.height}px`;
+
+        // Set background position based on vehicle type
+        if (this.selectedVehicle.name === 'BIKE') {
+            hero.style.backgroundPosition = '-45px 0'; // Center position for bike (second frame)
+        } else {
+            hero.style.backgroundPosition = '-110px 0'; // Center position for cars
+        }
+
+        // Reposition hero based on new dimensions
+        hero.style.top = `${GAME_HEIGHT - 100}px`;
+        hero.style.left = `${HALF_WIDTH - (this.selectedVehicle.width * 1.75 / 2)}px`;
+
         document.getElementById('hud').style.display = 'block';
         const road = document.getElementById('road');
         road.style.opacity = '1';
 
         // Reset HUD display values
-        document.getElementById('time').textContent = (this.countDown | 0).pad(3);
         document.getElementById('score').textContent = (this.scoreVal | 0).pad(8);
-        document.getElementById('tacho').textContent = this.speed | 0;
-        document.getElementById('distance').textContent = `DIST: ${Math.floor(this.scoreVal)}m`;
-        document.getElementById('lives').textContent = `LIVES: ${this.lives}`;
+        document.getElementById('tacho').textContent = (this.speed | 0) + ' MPH';
+        document.getElementById('distance-value').textContent = `${Math.floor(this.scoreVal)}m`;
+        document.getElementById('lives-value').textContent = this.lives;
 
         let cT = new Date(Date.now() - this.start);
         document.getElementById('lap').textContent = `${cT.getMinutes()}'${cT.getSeconds().pad(2)}"${cT.getMilliseconds().pad(3)}`;
@@ -543,13 +570,21 @@ class FixedRacer {
 
         const hero = document.getElementById('hero');
         if (this.keys['ArrowRight']) {
-            hero.style.backgroundPosition = '-220px 0';
+            if (this.selectedVehicle.name === 'BIKE') {
+                hero.style.backgroundPosition = `-90px 0`; // Right turn for bike (third frame)
+            } else {
+                hero.style.backgroundPosition = '-220px 0'; // Right turn for cars
+            }
             this.playerX += 0.007 * step * this.speed;
         } else if (this.keys['ArrowLeft']) {
-            hero.style.backgroundPosition = '0 0';
+            hero.style.backgroundPosition = '0 0'; // Left turn (same for all)
             this.playerX -= 0.007 * step * this.speed;
         } else {
-            hero.style.backgroundPosition = '-110px 0';
+            if (this.selectedVehicle.name === 'BIKE') {
+                hero.style.backgroundPosition = '-45px 0'; // Center position for bike (second frame)
+            } else {
+                hero.style.backgroundPosition = '-110px 0'; // Center position for cars
+            }
         }
 
         this.playerX = this.playerX.clamp(-3, 3);
@@ -591,13 +626,12 @@ class FixedRacer {
             this.gameOver();
         } else {
             // Update UI
-            document.getElementById('time').textContent = (this.countDown | 0).pad(3);
             document.getElementById('score').textContent = (this.scoreVal | 0).pad(8);
-            document.getElementById('tacho').textContent = this.speed | 0;
+            document.getElementById('tacho').textContent = (this.speed | 0) + ' MPH';
 
             // Update new HUD elements
-            document.getElementById('distance').textContent = `DIST: ${Math.floor(this.scoreVal)}m`;
-            document.getElementById('lives').textContent = `LIVES: ${this.lives}`;
+            document.getElementById('distance-value').textContent = `${Math.floor(this.scoreVal)}m`;
+            document.getElementById('lives-value').textContent = this.lives;
 
             let cT = new Date(Date.now() - this.start);
             document.getElementById('lap').textContent = `${cT.getMinutes()}'${cT.getSeconds().pad(2)}"${cT.getMilliseconds().pad(3)}`;
@@ -630,6 +664,10 @@ class FixedRacer {
                         this.speed = Math.min(HIT_SPEED, this.speed);
                         this.lives--;
                         this.lastCollisionTime = now; // Update last collision time
+                        
+                        // Update lives display immediately
+                        document.getElementById('lives-value').textContent = this.lives;
+                        
                         console.log('Car collision! Lives:', this.lives);
                         if (this.lives <= 0) {
                             this.gameOver();
@@ -718,19 +756,58 @@ class FixedRacer {
 
         // Update hero car position
         const hero = document.getElementById('hero');
-        hero.style.left = `${HALF_WIDTH - 68 + this.playerX * 125}px`;
+        const heroHalfWidth = (this.selectedVehicle.width * 1.75) / 2;
+        hero.style.left = `${HALF_WIDTH - heroHalfWidth + this.playerX * 125}px`;
+    }
+
+    calculateFinalScore() {
+        const raceTime = Math.floor((Date.now() - this.start) / 1000); // Time in seconds
+        const baseScore = Math.floor(this.scoreVal);
+        const timePenalty = raceTime; // 1 point deducted per second
+        const lifeBonus = this.lives * 100; // 100 points per life remaining
+        const finalScore = Math.max(0, baseScore - timePenalty + lifeBonus);
+
+        return {
+            baseScore,
+            raceTime,
+            timePenalty,
+            lifeBonus,
+            livesRemaining: this.lives,
+            finalScore
+        };
     }
 
     gameOver() {
         this.inGame = false;
         this.gameState = GAME_STATES.GAME_OVER;
 
+        const scoreData = this.calculateFinalScore();
+
         document.getElementById('menu').style.display = 'flex';
         document.getElementById('menu-content').innerHTML = `
             <h2 style="color: #ff0000; margin-bottom: 20px; font-size: 1.8em; text-align: center;">GAME OVER</h2>
-            <div style="text-align: center;">
-                <p style="font-size: 1em; text-align: center;">Final Score: ${Math.floor(this.scoreVal)}</p>
-                <p style="font-size: 1em; text-align: center;">Lives: ${this.lives}</p>
+            <div style="text-align: center; font-size: 14px; line-height: 1.6;">
+                <div style="background: rgba(0,0,0,0.5); padding: 20px; border-radius: 10px; margin: 20px auto; max-width: 400px;">
+                    <h3 style="color: #ffffff; margin-bottom: 15px; font-size: 16px;">SCORE BREAKDOWN</h3>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="color: #ffffff;">Base Score:</span>
+                        <span style="color: #4cff00;">+${scoreData.baseScore}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="color: #ffffff;">Time Penalty (${scoreData.raceTime}s):</span>
+                        <span style="color: #ff0000;">-${scoreData.timePenalty}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
+                        <span style="color: #ffffff;">Life Bonus (${scoreData.livesRemaining} × 100):</span>
+                        <span style="color: #4cff00;">+${scoreData.lifeBonus}</span>
+                    </div>
+                    <div style="border-top: 2px solid #ffffff; padding-top: 10px;">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: #ff6600; font-size: 18px; font-weight: bold;">FINAL SCORE:</span>
+                            <span style="color: #ff6600; font-size: 18px; font-weight: bold;">${scoreData.finalScore}</span>
+                        </div>
+                    </div>
+                </div>
                 <p style="margin-top: 20px; animation: blink 1s infinite; text-align: center; font-size: 1.1em;">PRESS SPACE TO RESTART</p>
             </div>
         `;
@@ -750,7 +827,7 @@ class FixedRacer {
         this.mapIndex = 0;
         this.lives = 3;
         this.lastCollisionTime = 0; // Reset collision time
-        
+
         // Reset vehicle stats to defaults
         this.maxSpeed = MAX_SPEED;
         this.vehicleAccel = ACCEL;
